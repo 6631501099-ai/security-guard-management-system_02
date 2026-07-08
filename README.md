@@ -6,7 +6,7 @@ SecurityGuardManagementSystem is an IAM-integrated agreement management system f
 - Vue frontend for dashboard, SecurityGuardManagementSystem registry, account directory, settings, and permission management.
 - IAM delegated authentication and permission filtering.
 - Local/server Docker Compose files.
-- GitLab CI and GitLab deploy compose templates for Harbor-based delivery.
+- GitLab CI and GitLab deploy compose templates for Harbor-based delivery. #สิ่งที่อาจาร์ต้องการ
 
 ## Runtime Ports
 
