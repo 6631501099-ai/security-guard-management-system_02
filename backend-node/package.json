@@ -21,7 +21,7 @@
     "cleanup:audit-retention": "node -r dotenv/config scripts/cleanup-audit-retention.js",
     "seed:e2e-admin": "node -r dotenv/config scripts/seed-e2e-admin.js dotenv_config_path=.env.test",
     "start": "npm run start:local",
-    "start:local": "DOTENV_CONFIG_PATH=.env.local nodemon -r dotenv/config server.js",
+    "start:local": "cross-env DOTENV_CONFIG_PATH=.env.local nodemon -r dotenv/config server.js",
     "start:preprod": "DOTENV_CONFIG_PATH=.env.preprod node -r dotenv/config server.js",
     "start:prod": "DOTENV_CONFIG_PATH=.env.prod node -r dotenv/config server.js",
     "serve:e2e": "DOTENV_CONFIG_PATH=.env.test node -r dotenv/config server.js",
@@ -62,6 +62,7 @@
     "x-xss-protection": "^2.0.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "nodemon": "^2.0.20"
   },
   "repository": {
