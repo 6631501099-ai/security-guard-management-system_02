@@ -22,6 +22,7 @@ dependencies:
   image_picker: ^1.1.2
   firebase_storage: ^11.7.7
   url_launcher: ^6.3.2
+  intl: ^0.19.0 # used by CheckInOutScreen for the live clock / date labels
 
 dev_dependencies:
   flutter_test:
@@ -42,5 +43,3 @@ flutter_launcher_icons:
   image_path: "assets/icon.png"
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/icon.png"
-
-

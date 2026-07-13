@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_dashboard.dart';
 import 'login_page.dart';
-import 'Guard/guard_page.dart';
+import 'Guard/guard_dashboard_screen.dart';
 
 ////////////////////////////////////////////////////////////
 /// AUTH CHECK
@@ -68,7 +68,9 @@ class RoleCheck extends StatelessWidget {
           return const AdminDashboard();
         }
 
-        return const GuardPage();
+        final guardName = data?['name'] as String? ?? "เจ้าหน้าที่";
+
+        return GuardDashboardScreen(guardName: guardName);
       },
     );
   }

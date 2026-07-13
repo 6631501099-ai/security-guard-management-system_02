@@ -1,0 +1,14 @@
+[33m2e90beb[m[33m ([m[1;36mHEAD[m[33m, [m[1;32magents/hidden-cephalopod[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33mcea587c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: reset: moving to origin/main
+[33maed6274[m HEAD@{2}: commit: ProjectEnd02_Guard_page
+[33m93489d4[m HEAD@{3}: commit: ProjectEnd02_login_page
+[33m3f1b39b[m HEAD@{4}: commit: page
+[33mcea587c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: pull --rebase origin main (start): checkout cea587cc9a69dc901d69b6519dac6f3bda3b72a0
+[33mb44bd7f[m[33m ([m[1;32mmain[m[33m)[m HEAD@{6}: commit: page
+[33m2e90beb[m[33m ([m[1;36mHEAD[m[33m, [m[1;32magents/hidden-cephalopod[m[33m)[m HEAD@{7}: reset: moving to HEAD
+[33m2e90beb[m[33m ([m[1;36mHEAD[m[33m, [m[1;32magents/hidden-cephalopod[m[33m)[m HEAD@{8}: commit: ProjectEnd02
+[33m0785670[m HEAD@{9}: commit: hello Yaya
+[33mb8091c1[m HEAD@{10}: pull origin main: Fast-forward
+[33m7dda6e7[m HEAD@{11}: commit: Update project
+[33m7143f51[m HEAD@{12}: commit: 099
+[33ma43c711[m HEAD@{13}: commit (initial): first commit

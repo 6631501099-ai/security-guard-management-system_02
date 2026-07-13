@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'guard_theme.dart';
 
-/// Shows the bottom sheet used to compose and send an emergency SOS report.
-/// [onSend] should perform the actual submission (e.g. write to Firestore).
+/// Shows the SOS composer bottom sheet. [onSend] is called when the guard
+/// taps send; the caller is responsible for actually dispatching the SOS
+/// (e.g. via GuardLocationService.sendSOS) and closing the sheet if desired.
 Future<void> showGuardSosSheet({
   required BuildContext context,
   required TextEditingController controller,
@@ -10,83 +12,79 @@ Future<void> showGuardSosSheet({
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      bool isSending = false;
-
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Center(
-                  child: Container(
-                    width: 60,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const Icon(Icons.warning_amber_rounded,
+                    color: GuardTheme.primaryRed),
+                const SizedBox(width: 8),
                 const Text(
-                  "Emergency Report",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  "แจ้งเหตุฉุกเฉิน",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  "Describe the situation and send an SOS to the admin.",
-                  style: TextStyle(color: Colors.black54),
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  controller: controller,
-                  maxLines: 5,
-                  decoration: InputDecoration(
-                    hintText: "Enter details about the incident...",
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                    icon: const Icon(Icons.send),
-                    label: Text(isSending ? "Sending..." : "Send SOS"),
-                    onPressed: isSending
-                        ? null
-                        : () async {
-                            setState(() => isSending = true);
-                            await onSend();
-                            setState(() => isSending = false);
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                  ),
-                ),
-                const SizedBox(height: 10),
               ],
             ),
-          );
-        },
-      );
-    },
+            const SizedBox(height: 12),
+            Text(
+              "ระบุรายละเอียดสั้นๆ (ถ้ามี) ระบบจะส่งตำแหน่งปัจจุบันของคุณไปยังแอดมินทันที",
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: "เจ้าหน้าที่ต้องการความช่วยเหลือด่วน",
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: GuardTheme.primaryRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await onSend();
+                },
+                icon: const Icon(Icons.send),
+                label: const Text(
+                  "ส่ง SOS ทันที",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ),
   );
 }

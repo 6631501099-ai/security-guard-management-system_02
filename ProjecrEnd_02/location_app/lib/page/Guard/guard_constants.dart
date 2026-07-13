@@ -1,9 +1,16 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Constants defining the guard patrol scope/geofence.
+/// Shared constants for the patrol/work zone.
+/// Adjust [scopeCenter] and [scopeRadiusMeters] to match your actual site.
 class GuardConstants {
   GuardConstants._();
 
-  static const LatLng scopeCenter = LatLng(13.736717, 100.523186);
-  static const double scopeRadiusMeters = 1000;
+  /// Center point of the allowed patrol/work zone.
+  static const LatLng scopeCenter = LatLng(13.736717, 100.523186); // Bangkok, replace with your site's coordinates
+
+  /// Radius (in meters) around [scopeCenter] considered "inside" the zone.
+  static const double scopeRadiusMeters = 200;
+
+  /// ⚠️ TODO: replace with your control room / admin's real phone number.
+  static const String emergencyContactPhone = "0800000000";
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'guard_theme.dart';
 
-/// A small stat display card used on the guard dashboard.
+/// Small stat tile — icon, title, value — used in dashboard-style grids.
 class GuardStatCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -18,29 +19,23 @@ class GuardStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: minWidth,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      constraints: BoxConstraints(minWidth: minWidth),
+      padding: const EdgeInsets.all(14),
+      decoration: GuardTheme.cardDecoration(radius: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.red, size: 28),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 6),
+          Icon(icon, color: GuardTheme.primaryRed, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 11, color: GuardTheme.textGrey),
+          ),
+          const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
         ],
       ),
