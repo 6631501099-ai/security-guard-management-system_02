@@ -173,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          Container(color: Colors.black.withOpacity(0.6)),
+          Container(color: Colors.black.withValues(alpha: 0.6)),
 
           ////////////////////////////////////////////////////////////
           /// CONTENT
@@ -448,7 +448,7 @@ class AdminPage extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -994,7 +994,7 @@ class _GuardPageState extends State<GuardPage> {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 18,
                       offset: const Offset(0, 8),
                     ),
@@ -1139,7 +1139,7 @@ class _GuardPageState extends State<GuardPage> {
                               circleId: const CircleId("scope_zone"),
                               center: scopeCenter,
                               radius: scopeRadiusMeters,
-                              fillColor: Colors.red.withOpacity(0.12),
+                              fillColor: Colors.red.withValues(alpha: 0.12),
                               strokeColor: Colors.redAccent,
                               strokeWidth: 2,
                             ),
@@ -1307,7 +1307,7 @@ class _GuardPageState extends State<GuardPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

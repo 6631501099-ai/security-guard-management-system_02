@@ -6,6 +6,7 @@ const router = express.Router();
 const account = require('../accounts/service/account');
 const authorization = require('../security/service/authorization');
 const securityguardmanagementsystemDocument = require('./service/securityguardmanagementsystem_document');
+const gpsRoutes = require('../gps/gps.routes');
 
 const canViewRegistry = authorization.requirePermission('/security-guard-management-system/registry', 'view');
 const canEditRegistry = authorization.requirePermission('/security-guard-management-system/registry', 'edit');
@@ -29,6 +30,7 @@ function fail(response, error) {
 }
 
 router.use(account.onCheckAuthorization);
+router.use('/gps', gpsRoutes);
 
 router.get('/documents', canViewRegistry, async function (request, response) {
   try {

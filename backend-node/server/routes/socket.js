@@ -1,7 +1,6 @@
 
 module.exports = function(io) {
 
-
     io.on('connection', function(socket) {
         console.log('a user connected');
         socket.on('disconnect', () => {
@@ -10,6 +9,16 @@ module.exports = function(io) {
         socket.on('my message', (msg) => {
             console.log('message: ' + msg);
             io.emit('my broadcast', `server: ${msg}`);
+        });
+        socket.on('gps:subscribe', function (room) {
+            if (room) {
+                socket.join(String(room));
+            }
+        });
+        socket.on('gps:location', function (payload) {
+            if (payload && payload.guardId) {
+                io.to(String(payload.guardId)).emit('gps:location', payload);
+            }
         });
         // console.log(socket.handshake.headers);
         //
