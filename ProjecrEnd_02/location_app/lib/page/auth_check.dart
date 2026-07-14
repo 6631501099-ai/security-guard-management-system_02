@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_dashboard.dart';
 import 'login_page.dart';
-import 'guard_page.dart';
+import 'Guard/guard_page.dart';
 
 ////////////////////////////////////////////////////////////
 /// AUTH CHECK
