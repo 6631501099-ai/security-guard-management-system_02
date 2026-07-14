@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final email = TextEditingController();
   final password = TextEditingController();
 
+  bool obscurePassword = true;
   bool loading = false;
 
   Future<void> login() async {
@@ -31,9 +32,9 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Login ไม่สำเร็จ")));
+    } finally {
+      setState(() => loading = false);
     }
-
-    setState(() => loading = false);
   }
 
   @override
@@ -46,16 +47,102 @@ class _LoginPageState extends State<LoginPage> {
           ////////////////////////////////////////////////////////////
           Container(
             decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(
-                  "https://images.unsplash.com/photo-1519501025264-65ba15a82390",
-                ),
-                fit: BoxFit.cover,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xff630000),
+                  Color(0xff4B0000),
+                  Color(0xff320000),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: -120,
+            left: -80,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0x22D4AF37),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x44D4AF37),
+                    blurRadius: 120,
+                    spreadRadius: 30,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -80,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0x11D4AF37),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x44D4AF37),
+                    blurRadius: 100,
+                    spreadRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 35,
+            top: 180,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Color(0xffD4AF37),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 15),
+                ],
               ),
             ),
           ),
 
-          Container(color: Colors.black.withOpacity(0.6)),
+          Positioned(
+            right: 40,
+            top: 420,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: const BoxDecoration(
+                color: Color(0xffD4AF37),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 20),
+                ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            right: 55,
+            bottom: 180,
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xffD4AF37),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 10),
+                ],
+              ),
+            ),
+          ),
 
           ////////////////////////////////////////////////////////////
           /// CONTENT
@@ -67,54 +154,133 @@ class _LoginPageState extends State<LoginPage> {
                   margin: const EdgeInsets.all(24),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.white.withOpacity(.06),
+
+                    border: Border.all(color: Colors.white12),
+
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.security, size: 80, color: Colors.red),
+                      Image.asset("assets/icon02.png", height: 70),
 
                       const SizedBox(height: 20),
 
                       const Text(
-                        "Security Guard System",
+                        "ลงชื่อเข้าใช้งาน",
                         style: TextStyle(
+                          color: Color(0xffD4AF37),
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      const Text(
+                        "กรอกข้อมูลเพื่อลงชื่อเข้าใช้งาน",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
 
                       const SizedBox(height: 30),
 
                       TextField(
                         controller: email,
+                        keyboardType: TextInputType.emailAddress,
+                        style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: "Email",
+                          hintStyle: const TextStyle(color: Colors.white54),
+
+                          prefixIcon: const Icon(
+                            Icons.email,
+                            color: Color(0xffD4AF37),
+                          ),
+
                           filled: true,
-                          fillColor: Colors.grey.shade100,
+                          fillColor: Colors.white.withOpacity(.05),
+
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.white10),
+                          ),
+
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(
+                              color: Color(0xffD4AF37),
+                            ),
+                          ),
+
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide.none,
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
                       TextField(
                         controller: password,
-                        obscureText: true,
+                        obscureText: obscurePassword,
+                        style: const TextStyle(color: Colors.white),
+
                         decoration: InputDecoration(
                           hintText: "Password",
+                          hintStyle: const TextStyle(color: Colors.white54),
+
+                          prefixIcon: const Icon(
+                            Icons.lock,
+                            color: Color(0xffD4AF37),
+                          ),
+
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.white54,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
+
                           filled: true,
-                          fillColor: Colors.grey.shade100,
+                          fillColor: Colors.white.withOpacity(.05),
+
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.white10),
+                          ),
+
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(
+                              color: Color(0xffD4AF37),
+                            ),
+                          ),
+
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide.none,
                           ),
                         ),
                       ),
+
+                      const SizedBox(height: 30),
 
                       const SizedBox(height: 30),
 
@@ -123,7 +289,8 @@ class _LoginPageState extends State<LoginPage> {
                         height: 55,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.red,
+                            backgroundColor: const Color(0xffD4AF37),
+                            foregroundColor: Colors.black,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
@@ -131,16 +298,25 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: loading ? null : login,
                           child: loading
                               ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                 )
                               : const Text(
-                                  "LOGIN",
-                                  style: TextStyle(fontSize: 18),
+                                  "เข้าสู่ระบบ",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
+
+                      const Text(
+                        "กรอกข้อมูลเพื่อลงชื่อเข้าใช้งาน",
+                        style: TextStyle(color: Colors.white70),
+                      ),
 
                       TextButton(
                         onPressed: () {
