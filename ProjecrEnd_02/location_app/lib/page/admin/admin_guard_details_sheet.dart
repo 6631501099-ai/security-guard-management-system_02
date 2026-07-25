@@ -10,6 +10,7 @@ import 'admin_status_pill.dart';
 void showGuardDetailsSheet(
   BuildContext context, {
   required Map<String, dynamic> guard,
+  required String docId,
   required void Function(LatLng location, String? label) onLocate,
 }) {
   final outOfScope = guard['outOfScope'] == true;
@@ -106,6 +107,40 @@ void showGuardDetailsSheet(
                   color: AppColors.info,
                   width: 150,
                   onPressed: () => GuardActions.callGuard(context, guard),
+                ),
+                ActionButton(
+                  icon: Icons.edit,
+                  label: "Edit",
+                  color: AppColors.warning,
+                  width: 150,
+                  onPressed: () => GuardActions.showEditDialog(
+                    context,
+                    uid: docId,
+                    currentName: (guard['name'] ?? '').toString(),
+                    currentPhone: (guard['phone'] ?? '').toString(),
+                  ),
+                ),
+                ActionButton(
+                  icon: Icons.delete_outline,
+                  label: "Remove",
+                  color: AppColors.accentRed,
+                  width: 150,
+                  onPressed: () async {
+                    final confirmed = await GuardActions.confirmDelete(
+                      context,
+                      guardName: (guard['name'] ?? 'this guard').toString(),
+                    );
+                    if (!confirmed) return;
+                    await GuardActions.deleteGuard(docId);
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Guard removed from roster."),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ],
             ),

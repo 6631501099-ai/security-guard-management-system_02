@@ -168,42 +168,52 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   }
 
   Widget _buildActionGrid(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 14,
-      crossAxisSpacing: 14,
-      childAspectRatio: 1.3,
-      children: [
-        _actionCard(
-          icon: Icons.access_time,
-          label: "การเข้างาน",
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CheckInOutScreen()),
-          ),
-        ),
-        _actionCard(
-          icon: Icons.calendar_month,
-          label: "ตารางงาน",
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const GuardScheduleScreen()),
-          ),
-        ),
-        _actionCard(
-          icon: Icons.description,
-          label: "รายงาน",
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const IncidentReportScreen()),
-          ),
-        ),
-        _actionCard(
-          icon: Icons.warning_amber_rounded,
-          label: "SOS",
-          onTap: _openSosComposer,
-          isAlert: true,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const crossAxisCount = 2;
+        const spacing = 14.0;
+        const tileHeight = 108.0; // fixed, proportional card height
+        final tileWidth = (constraints.maxWidth - spacing) / crossAxisCount;
+        final aspectRatio = tileWidth / tileHeight;
+
+        return GridView.count(
+          crossAxisCount: crossAxisCount,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: spacing,
+          crossAxisSpacing: spacing,
+          childAspectRatio: aspectRatio,
+          children: [
+            _actionCard(
+              icon: Icons.access_time,
+              label: "การเข้างาน",
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CheckInOutScreen()),
+              ),
+            ),
+            _actionCard(
+              icon: Icons.calendar_month,
+              label: "ตารางงาน",
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GuardScheduleScreen()),
+              ),
+            ),
+            _actionCard(
+              icon: Icons.description,
+              label: "รายงาน",
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const IncidentReportScreen()),
+              ),
+            ),
+            _actionCard(
+              icon: Icons.warning_amber_rounded,
+              label: "SOS",
+              onTap: _openSosComposer,
+              isAlert: true,
+            ),
+          ],
+        );
+      },
     );
   }
 

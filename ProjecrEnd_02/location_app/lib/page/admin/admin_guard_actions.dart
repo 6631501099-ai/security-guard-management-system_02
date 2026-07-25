@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,5 +67,162 @@ class GuardActions {
         content: Text(message),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // EDIT — writes to both `users/{uid}` (what the guard app itself reads
+  // for its own profile) and `locations/{uid}` (so the roster/live-tracking
+  // labels update immediately, without waiting for the guard to reconnect).
+  // ---------------------------------------------------------------------
+
+  static Future<void> updateGuardProfile({
+    required String uid,
+    required String name,
+    required String phone,
+  }) async {
+    final firestore = FirebaseFirestore.instance;
+    await firestore.collection('users').doc(uid).set(
+      {'name': name, 'phone': phone},
+      SetOptions(merge: true),
+    );
+    await firestore.collection('locations').doc(uid).set(
+      {'name': name},
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Opens a simple name/phone edit dialog for [uid] and saves on confirm.
+  static Future<void> showEditDialog(
+    BuildContext context, {
+    required String uid,
+    required String currentName,
+    required String currentPhone,
+  }) async {
+    final nameController = TextEditingController(text: currentName);
+    final phoneController = TextEditingController(text: currentPhone);
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (builderContext, setDialogState) => AlertDialog(
+          title: const Text("Edit guard"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: "Name"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: "Phone"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
+              child: const Text("Cancel"),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final name = nameController.text.trim();
+                      final phone = phoneController.text.trim();
+                      if (name.isEmpty) {
+                        _showWarning(context, "Name can't be empty.");
+                        return;
+                      }
+                      setDialogState(() => saving = true);
+                      try {
+                        await updateGuardProfile(
+                          uid: uid,
+                          name: name,
+                          phone: phone,
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: AppColors.success,
+                              content: Text("Guard profile updated."),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => saving = false);
+                        if (context.mounted) {
+                          _showWarning(context, "Update failed: $e");
+                        }
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text("Save"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // DELETE — removes the guard from the active roster/live tracking and
+  // clears their stored profile. This does NOT delete their Firebase Auth
+  // account or block them from logging back in: deleting an auth account
+  // requires the Firebase Admin SDK (e.g. a Cloud Function) and can't be
+  // done safely from a client app. To fully deactivate someone, also
+  // disable their account from the Firebase Console (Authentication tab).
+  // ---------------------------------------------------------------------
+
+  static Future<void> deleteGuard(String uid) async {
+    final firestore = FirebaseFirestore.instance;
+    await firestore.collection('locations').doc(uid).delete();
+    await firestore.collection('users').doc(uid).delete();
+  }
+
+  /// Shows a confirmation dialog before the destructive delete; returns
+  /// true only if the admin explicitly confirmed.
+  static Future<bool> confirmDelete(
+    BuildContext context, {
+    required String guardName,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Remove this guard?"),
+        content: Text(
+          'Remove "$guardName" from the roster and live tracking?\n\n'
+          "Their login will still work afterwards — to fully deactivate "
+          "the account, do that separately from the Firebase Console.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accentRed,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text("Remove"),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }

@@ -22,12 +22,16 @@ class SosEmergencyScreen extends StatefulWidget {
 }
 
 class _SosEmergencyScreenState extends State<SosEmergencyScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GuardLocationService _locationService = GuardLocationService();
   final User? _user = FirebaseAuth.instance.currentUser;
 
   int _navIndex = 2;
   late final AnimationController _pulseController;
+
+  /// Drives the 3-second "hold to cancel" gesture on the cancel button.
+  static const _holdToCancelDuration = Duration(seconds: 3);
+  late final AnimationController _holdController;
   Timer? _elapsedTimer;
   double _secondsElapsed = 0;
 
@@ -45,14 +49,32 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen>
     _pulseController =
         AnimationController(vsync: this, duration: const Duration(seconds: 1))
           ..repeat(reverse: true);
+    _holdController =
+        AnimationController(vsync: this, duration: _holdToCancelDuration)
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _cancelAlert();
+            }
+          });
     _sendAlert();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _holdController.dispose();
     _elapsedTimer?.cancel();
     super.dispose();
+  }
+
+  void _beginHoldToCancel() {
+    _holdController.forward(from: 0);
+  }
+
+  void _releaseHoldToCancel() {
+    if (_holdController.status != AnimationStatus.completed) {
+      _holdController.reverse();
+    }
   }
 
   Future<void> _sendAlert() async {
@@ -190,41 +212,31 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen>
               ),
             ),
             const SizedBox(height: 28),
+            _buildSosButton(context),
+            const SizedBox(height: 12),
             AnimatedBuilder(
-              animation: _pulseController,
+              animation: _holdController,
               builder: (context, child) {
-                final scale = 1 + (_pulseController.value * 0.08);
-                return Transform.scale(scale: scale, child: child);
-              },
-              child: Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-                alignment: Alignment.center,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: GuardTheme.primaryRed,
+                final progress = _holdController.value;
+                if (progress <= 0) {
+                  return const Text(
+                    "กดค้างไว้ที่ปุ่ม SOS 3 วินาทีเพื่อยกเลิกการแจ้งเตือน",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  );
+                }
+                final secondsLeft =
+                    (_holdToCancelDuration.inSeconds * (1 - progress)).ceil();
+                return Text(
+                  "กำลังยกเลิก... ปล่อยนิ้วเพื่อหยุด (เหลือ $secondsLeft วิ)",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
-                  alignment: Alignment.center,
-                  child: _sending
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "SOS",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                ),
-              ),
+                );
+              },
             ),
             const SizedBox(height: 20),
             if (_sent)
@@ -303,15 +315,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen>
                     _lat == null ? null : _shareLocation),
               ],
             ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _cancelAlert,
-              child: const Text(
-                "ยกเลิกการแจ้งเตือน",
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -320,6 +324,74 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen>
         onTap: (i) {
           if (i == _navIndex) return;
           navigateToTab(context, i);
+        },
+      ),
+    );
+  }
+
+  Widget _buildSosButton(BuildContext context) {
+    final scale = GuardTheme.responsiveScale(context);
+    final outerSize = 190 * scale;
+    final innerSize = 150 * scale;
+
+    return GestureDetector(
+      onLongPressStart: (_) => _beginHoldToCancel(),
+      onLongPressEnd: (_) => _releaseHoldToCancel(),
+      onLongPressCancel: _releaseHoldToCancel,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_pulseController, _holdController]),
+        builder: (context, child) {
+          final pulse = 1 + (_pulseController.value * 0.08);
+          final holdProgress = _holdController.value;
+          return Transform.scale(
+            scale: pulse,
+            child: SizedBox(
+              width: outerSize,
+              height: outerSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+                  if (holdProgress > 0)
+                    SizedBox(
+                      width: outerSize,
+                      height: outerSize,
+                      child: CircularProgressIndicator(
+                        value: holdProgress,
+                        strokeWidth: 6,
+                        backgroundColor: Colors.white24,
+                        valueColor: const AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    ),
+                  Container(
+                    width: innerSize,
+                    height: innerSize,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: GuardTheme.primaryRed,
+                    ),
+                    alignment: Alignment.center,
+                    child: _sending
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            "SOS",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 34 * scale,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       ),
     );

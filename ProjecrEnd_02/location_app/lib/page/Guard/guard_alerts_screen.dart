@@ -4,12 +4,17 @@ import 'guard_theme.dart';
 import 'guard_header.dart';
 import 'guard_bottom_nav.dart';
 
+/// "emergency"/"notice" show up under the "แจ้ง" tab (things needing your
+/// attention); "system" shows up under "อื่นๆ" (informational/completed).
+enum AlertCategory { emergency, notice, system }
+
 class AlertEntry {
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
   final String time;
+  final AlertCategory category;
 
   const AlertEntry({
     required this.title,
@@ -17,6 +22,7 @@ class AlertEntry {
     required this.icon,
     required this.color,
     required this.time,
+    required this.category,
   });
 }
 
@@ -39,6 +45,7 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
       icon: Icons.warning_amber_rounded,
       color: GuardTheme.primaryRed,
       time: "2 นาทีที่แล้ว",
+      category: AlertCategory.emergency,
     ),
     AlertEntry(
       title: "จำเป็นการเปลี่ยนเวร",
@@ -46,6 +53,7 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
       icon: Icons.swap_horiz,
       color: Colors.blueAccent,
       time: "35 นาทีที่แล้ว",
+      category: AlertCategory.notice,
     ),
     AlertEntry(
       title: "เพื่อการทำงาน",
@@ -53,6 +61,7 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
       icon: Icons.notifications_active_outlined,
       color: GuardTheme.orange,
       time: "1 ชม.ที่แล้ว",
+      category: AlertCategory.notice,
     ),
     AlertEntry(
       title: "ดูแลระบบความปลอดภัย",
@@ -60,6 +69,7 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
       icon: Icons.check_circle_outline,
       color: GuardTheme.green,
       time: "เมื่อวาน",
+      category: AlertCategory.system,
     ),
   ];
 
@@ -102,10 +112,17 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _all.length,
-                itemBuilder: (context, i) => _alertTile(_all[i]),
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildList(_all),
+                  _buildList(_all
+                      .where((a) => a.category != AlertCategory.system)
+                      .toList()),
+                  _buildList(_all
+                      .where((a) => a.category == AlertCategory.system)
+                      .toList()),
+                ],
               ),
             ),
           ],
@@ -118,6 +135,22 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
           navigateToTab(context, i);
         },
       ),
+    );
+  }
+
+  Widget _buildList(List<AlertEntry> items) {
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          "ไม่มีการแจ้งเตือนในหมวดนี้",
+          style: const TextStyle(color: GuardTheme.textGrey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      itemBuilder: (context, i) => _alertTile(items[i]),
     );
   }
 

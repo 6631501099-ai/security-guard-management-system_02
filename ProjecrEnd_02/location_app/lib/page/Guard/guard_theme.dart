@@ -37,4 +37,15 @@ class GuardTheme {
     fontWeight: FontWeight.bold,
     color: Colors.black87,
   );
+
+  /// Scale factor (<= 1.0) for fixed-size elements (big circles, floating
+  /// buttons, etc.) so they shrink proportionally on narrow phones instead
+  /// of overflowing, while normal/large phones are left untouched.
+  ///
+  /// Usage: `size * GuardTheme.responsiveScale(context)`
+  static double responsiveScale(BuildContext context, {double baseWidth = 360}) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= baseWidth) return 1.0;
+    return (width / baseWidth).clamp(0.78, 1.0);
+  }
 }

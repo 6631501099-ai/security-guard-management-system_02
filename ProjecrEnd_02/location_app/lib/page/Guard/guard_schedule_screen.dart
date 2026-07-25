@@ -37,11 +37,44 @@ class GuardScheduleScreen extends StatefulWidget {
 class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
   int _navIndex = 1;
   late int _selected;
+  late DateTime _currentMonth;
+
+  static const _thaiMonthsShort = [
+    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+  ];
 
   @override
   void initState() {
     super.initState();
     _selected = widget.selectedDay;
+    // The default sample data represents "พ.ค. 2569" (May, Buddhist year
+    // 2569) = May 2026 in the Gregorian calendar used internally.
+    _currentMonth = DateTime(2026, 5);
+  }
+
+  String get _monthLabel {
+    final buddhistYear = _currentMonth.year + 543;
+    return "${_thaiMonthsShort[_currentMonth.month - 1]} $buddhistYear";
+  }
+
+  List<int> get _daysInMonth {
+    final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    return List.generate(lastDay, (i) => i + 1);
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+      _selected = _selected.clamp(1, _daysInMonth.length);
+    });
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+      _selected = _selected.clamp(1, _daysInMonth.length);
+    });
   }
 
   @override
@@ -65,11 +98,17 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.chevron_left),
-                        Text(widget.monthLabel,
+                        IconButton(
+                          onPressed: _goToPreviousMonth,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        Text(_monthLabel,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
-                        const Icon(Icons.chevron_right),
+                        IconButton(
+                          onPressed: _goToNextMonth,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -77,10 +116,10 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
                       height: 74,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: widget.visibleDays.length,
+                        itemCount: _daysInMonth.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 10),
                         itemBuilder: (context, i) {
-                          final day = widget.visibleDays[i];
+                          final day = _daysInMonth[i];
                           final selected = day == _selected;
                           return GestureDetector(
                             onTap: () => setState(() => _selected = day),

@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'guard_nav_helper.dart';
 import 'guard_theme.dart';
 import 'guard_header.dart';
@@ -15,6 +18,13 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   int _navIndex = 2;
   String? _incidentType;
   final TextEditingController _descController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+
+  File? _photoFile;
+  File? _videoFile;
+  bool _isRecordingNote = false;
+  Duration _noteDuration = Duration.zero;
+  Timer? _noteTimer;
 
   final List<String> _incidentTypes = const [
     "บุคคลต้องสงสัย",
@@ -27,16 +37,97 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   @override
   void dispose() {
     _descController.dispose();
+    _noteTimer?.cancel();
     super.dispose();
   }
 
+  Future<ImageSource?> _chooseSource() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text("ถ่ายภาพ/วิดีโอใหม่"),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text("เลือกจากคลังภาพ"),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await _chooseSource();
+    if (source == null) return;
+    try {
+      final file = await _picker.pickImage(source: source, imageQuality: 80);
+      if (file != null && mounted) {
+        setState(() => _photoFile = File(file.path));
+      }
+    } catch (e) {
+      if (mounted) _showSnack("ไม่สามารถแนบรูปภาพได้: $e");
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final source = await _chooseSource();
+    if (source == null) return;
+    try {
+      final file = await _picker.pickVideo(source: source);
+      if (file != null && mounted) {
+        setState(() => _videoFile = File(file.path));
+      }
+    } catch (e) {
+      if (mounted) _showSnack("ไม่สามารถแนบวิดีโอได้: $e");
+    }
+  }
+
+  void _toggleVoiceNote() {
+    if (_isRecordingNote) {
+      _noteTimer?.cancel();
+      setState(() => _isRecordingNote = false);
+      _showSnack("บันทึกเสียงแล้ว (${_noteDuration.inSeconds} วินาที)");
+    } else {
+      setState(() {
+        _isRecordingNote = true;
+        _noteDuration = Duration.zero;
+      });
+      _noteTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _noteDuration += const Duration(seconds: 1));
+      });
+    }
+  }
+
+  void _showSnack(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
   void _submit() {
+    if (_incidentType == null) {
+      _showSnack("กรุณาเลือกรูปแบบเหตุการณ์");
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: GuardTheme.green,
         content: Text("ส่งรายงานเรียบร้อยแล้ว"),
       ),
     );
+    setState(() {
+      _incidentType = null;
+      _descController.clear();
+      _photoFile = null;
+      _videoFile = null;
+      _isRecordingNote = false;
+      _noteDuration = Duration.zero;
+    });
   }
 
   @override
@@ -89,11 +180,30 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                     _fieldLabel("หลักฐาน (รูปภาพ/วิดีโอ)"),
                     Row(
                       children: [
-                        _attachTile(Icons.add_a_photo_outlined),
+                        _attachTile(
+                          icon: Icons.add_a_photo_outlined,
+                          onTap: _pickPhoto,
+                          active: _photoFile != null,
+                          badge: _photoFile != null ? "1" : null,
+                        ),
                         const SizedBox(width: 12),
-                        _attachTile(Icons.videocam_outlined),
+                        _attachTile(
+                          icon: Icons.videocam_outlined,
+                          onTap: _pickVideo,
+                          active: _videoFile != null,
+                          badge: _videoFile != null ? "1" : null,
+                        ),
                         const SizedBox(width: 12),
-                        _attachTile(Icons.mic_none_outlined),
+                        _attachTile(
+                          icon: _isRecordingNote
+                              ? Icons.stop_circle_outlined
+                              : Icons.mic_none_outlined,
+                          onTap: _toggleVoiceNote,
+                          active: _isRecordingNote,
+                          badge: _isRecordingNote
+                              ? "${_noteDuration.inSeconds}s"
+                              : null,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 26),
@@ -158,16 +268,50 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     );
   }
 
-  Widget _attachTile(IconData icon) {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
+  Widget _attachTile({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool active = false,
+    String? badge,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: active ? GuardTheme.primaryRed.withOpacity(0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: active ? GuardTheme.primaryRed : Colors.grey.shade300,
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(icon,
+                color: active ? GuardTheme.primaryRed : GuardTheme.textGrey),
+            if (badge != null)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: GuardTheme.green,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badge,
+                    style: const TextStyle(fontSize: 9, color: Colors.white),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-      child: Icon(icon, color: GuardTheme.textGrey),
     );
   }
 }

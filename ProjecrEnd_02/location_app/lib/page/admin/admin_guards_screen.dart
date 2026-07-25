@@ -7,8 +7,9 @@ import 'admin_section_placeholder.dart';
 import 'admin_status_pill.dart';
 
 /// Roster of currently-active guards (updated within the last minute),
-/// searchable by email, each opening a detail sheet with Locate/Call.
-class GuardsSection extends StatelessWidget {
+/// searchable by email and filterable by scope status, each opening a
+/// detail sheet with Locate/Call/Edit/Remove.
+class GuardsSection extends StatefulWidget {
   final String search;
   final ValueChanged<String> onSearchChanged;
   final void Function(LatLng location, String? label) onLocate;
@@ -21,6 +22,15 @@ class GuardsSection extends StatelessWidget {
   });
 
   @override
+  State<GuardsSection> createState() => _GuardsSectionState();
+}
+
+enum _GuardFilter { all, inScope, outOfScope }
+
+class _GuardsSectionState extends State<GuardsSection> {
+  _GuardFilter _filter = _GuardFilter.all;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,9 +40,19 @@ class GuardsSection extends StatelessWidget {
         SizedBox(
           height: 44,
           child: TextField(
-            onChanged: onSearchChanged,
+            onChanged: widget.onSearchChanged,
             decoration: searchFieldDecoration('Search guard email'),
           ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _filterChip('All', _GuardFilter.all),
+            _filterChip('In scope', _GuardFilter.inScope),
+            _filterChip('Out of scope', _GuardFilter.outOfScope),
+          ],
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -54,15 +74,24 @@ class GuardsSection extends StatelessWidget {
                     .inSeconds;
                 if (diff > 60) continue;
                 final email = (data['email'] ?? '').toString().toLowerCase();
-                if (!email.contains(search.toLowerCase())) continue;
-                guards.add({...data, 'diff': diff});
+                if (!email.contains(widget.search.toLowerCase())) continue;
+
+                final outOfScope = data['outOfScope'] == true;
+                if (_filter == _GuardFilter.inScope && outOfScope) continue;
+                if (_filter == _GuardFilter.outOfScope && !outOfScope) {
+                  continue;
+                }
+
+                guards.add({...data, 'id': doc.id, 'diff': diff});
               }
 
               if (guards.isEmpty) {
-                return const SectionPlaceholder(
+                return SectionPlaceholder(
                   icon: Icons.person_off,
                   title: 'No active guards found',
-                  subtitle: 'Guards appear here once they check in.',
+                  subtitle: _filter == _GuardFilter.all
+                      ? 'Guards appear here once they check in.'
+                      : 'No guards match this filter right now.',
                 );
               }
 
@@ -129,7 +158,8 @@ class GuardsSection extends StatelessWidget {
                           onPressed: () => showGuardDetailsSheet(
                             context,
                             guard: guard,
-                            onLocate: onLocate,
+                            docId: guard['id'] as String,
+                            onLocate: widget.onLocate,
                           ),
                           icon: const Icon(Icons.location_on),
                           label: const Text('View'),
@@ -143,6 +173,28 @@ class GuardsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _filterChip(String label, _GuardFilter value) {
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _filter = value),
+      showCheckmark: false,
+      backgroundColor: AppColors.surface,
+      selectedColor: AppColors.accentRed.withValues(alpha: 0.12),
+      labelStyle: TextStyle(
+        color: selected ? AppColors.accentRed : AppColors.textSecondary,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(
+          color: selected ? AppColors.accentRed : AppColors.divider,
+        ),
+      ),
     );
   }
 }

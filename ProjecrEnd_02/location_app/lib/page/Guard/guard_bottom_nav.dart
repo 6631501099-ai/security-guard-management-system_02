@@ -18,6 +18,8 @@ class GuardBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icons = [Icons.home_rounded, Icons.list_alt_rounded, null, Icons.person_rounded];
+    final scale = GuardTheme.responsiveScale(context);
+    final fabSize = 58 * scale;
 
     return SizedBox(
       height: 78,
@@ -77,16 +79,16 @@ class GuardBottomNav extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -22,
+            top: -22 * scale,
             child: GestureDetector(
               onTap: () => onTap(2),
               child: Container(
-                width: 58,
-                height: 58,
+                width: fabSize,
+                height: fabSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: GuardTheme.primaryRed,
-                  border: Border.all(color: Colors.white, width: 4),
+                  border: Border.all(color: Colors.white, width: 4 * scale),
                   boxShadow: [
                     BoxShadow(
                       color: GuardTheme.primaryRed.withOpacity(0.4),
@@ -95,7 +97,8 @@ class GuardBottomNav extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.warning_rounded, color: Colors.white),
+                child: Icon(Icons.warning_rounded,
+                    color: Colors.white, size: 24 * scale),
               ),
             ),
           ),
