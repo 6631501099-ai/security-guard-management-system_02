@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Location App</string>
+	<string>SGMS MFU</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>location_app</string>
+	<string>SGMS MFU</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Required so the camera/photo picker in the incident report and
+	     profile-photo screens don't crash when requesting permission. -->
+	<key>NSCameraUsageDescription</key>
+	<string>SGMS MFU needs camera access so guards can attach photos/videos to incident reports and set a profile picture.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SGMS MFU needs photo library access so guards can attach existing photos/videos to incident reports and choose a profile picture.</string>
+
+	<!-- Required for live location tracking, check-in/out geofencing, and SOS. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SGMS MFU needs your location to verify check-in/check-out at your assigned post and to share your position during an SOS alert.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SGMS MFU needs background location access so patrol status keeps updating for the control room even while the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SGMS MFU needs background location access so patrol status keeps updating for the control room even while the app is in the background.</string>
 </dict>
 </plist>
