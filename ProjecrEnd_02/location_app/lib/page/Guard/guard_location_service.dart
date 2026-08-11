@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'guard_constants.dart';
+import '../../date_key.dart';
 
 /// Result of a location-permission request.
 class GuardPermissionResult {
@@ -25,6 +26,18 @@ class GuardPermissionResult {
 ///   - `locations/{uid}`: name, email, lat, lng, outOfScope, lastUpdate
 ///   - `sos`: uid, name, email, lat, lng, message, status, timestamp
 ///     (status starts as 'pending'; admin sets it to 'accepted')
+///   - `schedules`: guardUid, guardName, date (YYYY-MM-DD), label,
+///     startTime, endTime, note — written by the admin's schedule screen,
+///     read here per (guardUid, date).
+///   - `tasks`: guardUid, guardName, title, timeRange, date, done —
+///     written by the admin's task-assignment screen, completed here.
+///   - `incidents`: guardUid, guardName, type, description, photoUrl,
+///     lat, lng, status ('new'|'reviewed') — written here, read by admin.
+///   - `notifications`: targetUid ('all' for broadcast) or a specific
+///     guard uid, title, subtitle, category, timestamp — written by
+///     admin actions (accept SOS, assign task/shift) and read here.
+///   - `users/{uid}/activity`: iconKey, title, subtitle, timestamp — a
+///     short personal log read by the guard's own dashboard.
 class GuardLocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -133,6 +146,18 @@ class GuardLocationService {
     );
   }
 
+  /// Reads whether this guard is currently marked as working, so a screen
+  /// that gets recreated (e.g. after switching bottom-nav tabs) can
+  /// restore the right UI state instead of always assuming "not working".
+  Future<bool> fetchWorkingStatus(String uid) async {
+    try {
+      final doc = await _firestore.collection('locations').doc(uid).get();
+      return doc.data()?['working'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Called when the guard ends their shift. Admin treats a guard as
   /// "online" only if `lastUpdate` is within the last 60s, so once we
   /// stop writing updates they'll naturally drop off the online count —
@@ -142,6 +167,28 @@ class GuardLocationService {
       {'working': false},
       SetOptions(merge: true),
     );
+  }
+
+  /// Records when the current shift began, so `CheckInOutScreen` can
+  /// restore the correct "ระยะเวลา" (worked duration) if the screen gets
+  /// recreated mid-shift (e.g. the guard switches bottom-nav tabs and
+  /// comes back) instead of losing track of the real start time.
+  Future<void> markShiftStarted(String uid) async {
+    await _firestore.collection('locations').doc(uid).set(
+      {'shiftStart': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<DateTime?> fetchShiftStart(String uid) async {
+    try {
+      final doc = await _firestore.collection('locations').doc(uid).get();
+      final ts = doc.data()?['shiftStart'];
+      if (ts is Timestamp) return ts.toDate();
+    } catch (_) {
+      // fall through to null
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------
@@ -209,7 +256,9 @@ class GuardLocationService {
   // ---------------------------------------------------------------------
   // SOS — writes to `sos`, exactly what admin's SOS Alerts / Recent Logs
   // sections read. status starts 'pending' so it shows in admin's pending
-  // list; admin sets it to 'accepted' when handled.
+  // list; admin sets it to 'accepted' when handled (and, via
+  // GuardActions.acceptSos on the admin side, pushes a notification back
+  // here so the guard's Alerts screen shows the response).
   // ---------------------------------------------------------------------
 
   Future<String> sendSOS({
@@ -229,6 +278,12 @@ class GuardLocationService {
       'status': 'pending',
       'timestamp': FieldValue.serverTimestamp(),
     });
+    await logActivity(
+      uid: uid,
+      iconKey: 'sos',
+      title: 'ส่งสัญญาณ SOS',
+      subtitle: message,
+    );
     return doc.id;
   }
 
@@ -242,5 +297,155 @@ class GuardLocationService {
         SetOptions(merge: true),
       );
     }
+    await logActivity(
+      uid: uid,
+      iconKey: 'sos',
+      title: 'ยกเลิกสัญญาณ SOS',
+      subtitle: 'ยกเลิกโดยเจ้าหน้าที่เอง',
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // ACTIVITY FEED — a short, denormalized log of what a guard did, read
+  // by the guard's own dashboard ("กิจกรรมล่าสุด"). Every write here is
+  // best-effort: failures are swallowed so a logging hiccup never blocks
+  // the real action (check-in, task done, SOS, incident...) that
+  // triggered it.
+  // ---------------------------------------------------------------------
+
+  Future<void> logActivity({
+    required String uid,
+    required String iconKey,
+    required String title,
+    required String subtitle,
+  }) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('activity')
+          .add({
+        'iconKey': iconKey,
+        'title': title,
+        'subtitle': subtitle,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // best-effort only, see doc comment above
+    }
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchRecentActivity(
+    String uid, {
+    int limit = 6,
+  }) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('activity')
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
+
+  // ---------------------------------------------------------------------
+  // SCHEDULE — shifts the admin assigns to a guard, keyed by day so the
+  // guard's calendar strip can query one date at a time.
+  // NOTE: this query (equality on guardUid + equality on date) needs a
+  // Firestore composite index; Firestore will log a direct link to
+  // create it the first time this runs against real data.
+  // ---------------------------------------------------------------------
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchScheduleForDay(
+    String uid,
+    DateTime day,
+  ) {
+    return _firestore
+        .collection('schedules')
+        .where('guardUid', isEqualTo: uid)
+        .where('date', isEqualTo: dateKey(day))
+        .snapshots();
+  }
+
+  // ---------------------------------------------------------------------
+  // TASKS — duties the admin assigns to a guard.
+  // NOTE: also needs a composite index (guardUid equality + createdAt
+  // order).
+  // ---------------------------------------------------------------------
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchMyTasks(String uid) {
+    return _firestore
+        .collection('tasks')
+        .where('guardUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Future<void> completeTask({
+    required String taskId,
+    required String uid,
+    required String taskTitle,
+  }) async {
+    await _firestore.collection('tasks').doc(taskId).set(
+      {'done': true, 'completedAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+    await logActivity(
+      uid: uid,
+      iconKey: 'task',
+      title: 'ดำเนินการเสร็จสิ้น',
+      subtitle: taskTitle,
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // INCIDENT REPORTS — written here by the guard, read by the admin's
+  // incident inbox.
+  // ---------------------------------------------------------------------
+
+  Future<String> submitIncident({
+    required String uid,
+    required String guardName,
+    required String type,
+    required String description,
+    String? photoUrl,
+    double? lat,
+    double? lng,
+  }) async {
+    final doc = await _firestore.collection('incidents').add({
+      'guardUid': uid,
+      'guardName': guardName,
+      'type': type,
+      'description': description,
+      'photoUrl': photoUrl,
+      'lat': lat,
+      'lng': lng,
+      'status': 'new',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await logActivity(
+      uid: uid,
+      iconKey: 'incident',
+      title: 'ส่งรายงานเหตุการณ์',
+      subtitle: type,
+    );
+    return doc.id;
+  }
+
+  // ---------------------------------------------------------------------
+  // ALERTS / NOTIFICATIONS — things targeted at this guard specifically
+  // (targetUid == uid) plus broadcasts to everyone (targetUid == 'all'),
+  // read by the guard's Alerts screen.
+  // NOTE: `targetUid whereIn [...] + orderBy(timestamp)` also needs a
+  // composite index.
+  // ---------------------------------------------------------------------
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchMyAlerts(String uid) {
+    return _firestore
+        .collection('notifications')
+        .where('targetUid', whereIn: [uid, 'all'])
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots();
   }
 }

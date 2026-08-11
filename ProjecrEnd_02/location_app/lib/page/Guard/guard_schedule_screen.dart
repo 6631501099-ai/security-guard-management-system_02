@@ -1,42 +1,28 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'guard_nav_helper.dart';
 import 'guard_theme.dart';
 import 'guard_header.dart';
 import 'guard_bottom_nav.dart';
+import 'guard_location_service.dart';
 
-class ShiftEntry {
-  final String label;
-  final String timeRange;
-  final IconData icon;
-
-  const ShiftEntry({required this.label, required this.timeRange, required this.icon});
-}
-
+/// Guard-side schedule: month strip + shifts for the selected day, read
+/// live from the `schedules` collection that admin's Schedule section
+/// (admin_schedule_screen.dart) writes to.
 class GuardScheduleScreen extends StatefulWidget {
-  final String monthLabel;
-  final List<int> visibleDays;
-  final int selectedDay;
-  final List<ShiftEntry> shifts;
-
-  const GuardScheduleScreen({
-    super.key,
-    this.monthLabel = "พ.ค. 2569",
-    this.visibleDays = const [13, 14, 15, 16, 17, 18, 19],
-    this.selectedDay = 15,
-    this.shifts = const [
-      ShiftEntry(label: "กะ S1", timeRange: "08:00 น. - 16:00 น.", icon: Icons.wb_sunny_outlined),
-      ShiftEntry(label: "พักกลางวัน", timeRange: "11:00 น. - 12:00 น.", icon: Icons.restaurant_outlined),
-      ShiftEntry(label: "กะ S1", timeRange: "12:00 น. - 16:00 น.", icon: Icons.wb_sunny_outlined),
-    ],
-  });
+  const GuardScheduleScreen({super.key});
 
   @override
   State<GuardScheduleScreen> createState() => _GuardScheduleScreenState();
 }
 
 class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
+  final GuardLocationService _locationService = GuardLocationService();
+  final User? _user = FirebaseAuth.instance.currentUser;
+
   int _navIndex = 1;
-  late int _selected;
+  late DateTime _selected;
   late DateTime _currentMonth;
 
   static const _thaiMonthsShort = [
@@ -47,10 +33,9 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    _selected = widget.selectedDay;
-    // The default sample data represents "พ.ค. 2569" (May, Buddhist year
-    // 2569) = May 2026 in the Gregorian calendar used internally.
-    _currentMonth = DateTime(2026, 5);
+    final now = DateTime.now();
+    _selected = DateTime(now.year, now.month, now.day);
+    _currentMonth = DateTime(now.year, now.month);
   }
 
   String get _monthLabel {
@@ -59,21 +44,20 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
   }
 
   List<int> get _daysInMonth {
-    final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    final lastDay =
+        DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
     return List.generate(lastDay, (i) => i + 1);
   }
 
   void _goToPreviousMonth() {
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
-      _selected = _selected.clamp(1, _daysInMonth.length);
     });
   }
 
   void _goToNextMonth() {
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
-      _selected = _selected.clamp(1, _daysInMonth.length);
     });
   }
 
@@ -117,12 +101,16 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _daysInMonth.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (context, i) {
                           final day = _daysInMonth[i];
-                          final selected = day == _selected;
+                          final date = DateTime(
+                              _currentMonth.year, _currentMonth.month, day);
+                          final selected = date.year == _selected.year &&
+                              date.month == _selected.month &&
+                              date.day == _selected.day;
                           return GestureDetector(
-                            onTap: () => setState(() => _selected = day),
+                            onTap: () => setState(() => _selected = date),
                             child: Container(
                               width: 46,
                               decoration: BoxDecoration(
@@ -130,13 +118,15 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
                                     ? GuardTheme.primaryRed
                                     : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                boxShadow: selected ? [] : [GuardTheme.softShadow],
+                                boxShadow:
+                                    selected ? [] : [GuardTheme.softShadow],
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 "$day",
                                 style: TextStyle(
-                                  color: selected ? Colors.white : Colors.black87,
+                                  color:
+                                      selected ? Colors.white : Colors.black87,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -146,10 +136,56 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text("ตารางงานของเจ้าหน้าที่วันที่ $_selected",
+                    Text("ตารางงานของเจ้าหน้าที่วันที่ ${_selected.day}",
                         style: GuardTheme.sectionTitle),
                     const SizedBox(height: 12),
-                    ...widget.shifts.map(_shiftTile),
+                    if (_user == null)
+                      const Text(
+                        "กรุณาเข้าสู่ระบบ",
+                        style: TextStyle(color: GuardTheme.textGrey),
+                      )
+                    else
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: _locationService.watchScheduleForDay(
+                          _user.uid,
+                          _selected,
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return Text(
+                              "โหลดตารางงานไม่สำเร็จ: ${snapshot.error}",
+                              style: const TextStyle(color: GuardTheme.textGrey),
+                            );
+                          }
+                          if (!snapshot.hasData) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                  child: CircularProgressIndicator()),
+                            );
+                          }
+                          final docs = snapshot.data!.docs;
+                          if (docs.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Text(
+                                "ไม่มีกะงานสำหรับวันนี้",
+                                style: TextStyle(color: GuardTheme.textGrey),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: docs.map((doc) {
+                              final data = doc.data();
+                              return _shiftTile(
+                                label: data['label'] ?? 'กะงาน',
+                                timeRange:
+                                    "${data['startTime'] ?? '-'} - ${data['endTime'] ?? '-'} น.",
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -167,7 +203,7 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
     );
   }
 
-  Widget _shiftTile(ShiftEntry shift) {
+  Widget _shiftTile({required String label, required String timeRange}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -176,16 +212,16 @@ class _GuardScheduleScreenState extends State<GuardScheduleScreen> {
         children: [
           CircleAvatar(
             backgroundColor: GuardTheme.primaryRed.withOpacity(0.1),
-            child: Icon(shift.icon, color: GuardTheme.primaryRed, size: 20),
+            child: const Icon(Icons.wb_sunny_outlined,
+                color: GuardTheme.primaryRed, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(shift.label,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(shift.timeRange,
+                Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(timeRange,
                     style: const TextStyle(
                         fontSize: 12, color: GuardTheme.textGrey)),
               ],

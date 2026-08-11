@@ -9,12 +9,15 @@ import 'admin_logs_screen.dart';
 import 'admin_overview_screen.dart';
 import 'admin_sos_screen.dart';
 import 'admin_tracking_screen.dart';
+import 'admin_schedule_screen.dart';
+import 'admin_tasks_screen.dart';
+import 'admin_incidents_screen.dart';
 
 /// Admin control center: sidebar navigation + Overview / Live Tracking /
-/// SOS Alerts / Guards / Logs sections. This file only owns layout and
-/// shared state (search text, active section, sidebar width, focused-guard
-/// map target) — each section's content lives in its own file under
-/// screens/sections/.
+/// SOS Alerts / Guards / Schedule / Tasks / Incidents / Logs sections.
+/// This file only owns layout and shared state (search text, active
+/// section, sidebar width, focused-guard map target) — each section's
+/// content lives in its own file under screens/sections/.
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -113,42 +116,70 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 else
                   const SizedBox(height: 18),
                 const SizedBox(height: 24),
-                SidebarNavItem(
-                  icon: Icons.dashboard,
-                  title: "Overview",
-                  active: _selectedSection == "overview",
-                  expanded: _isSidebarExpanded,
-                  onTap: () => _goToSection("overview"),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        SidebarNavItem(
+                          icon: Icons.dashboard,
+                          title: "Overview",
+                          active: _selectedSection == "overview",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("overview"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.map,
+                          title: "Live Tracking",
+                          active: _selectedSection == "tracking",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("tracking"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.warning,
+                          title: "SOS Alerts",
+                          active: _selectedSection == "sos",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("sos"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.people,
+                          title: "Guards",
+                          active: _selectedSection == "guards",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("guards"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.calendar_month,
+                          title: "ตารางงาน",
+                          active: _selectedSection == "schedule",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("schedule"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.assignment_turned_in,
+                          title: "มอบหมายงาน",
+                          active: _selectedSection == "tasks",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("tasks"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.fact_check,
+                          title: "รายงานเหตุการณ์",
+                          active: _selectedSection == "incidents",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("incidents"),
+                        ),
+                        SidebarNavItem(
+                          icon: Icons.history,
+                          title: "Logs",
+                          active: _selectedSection == "logs",
+                          expanded: _isSidebarExpanded,
+                          onTap: () => _goToSection("logs"),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                SidebarNavItem(
-                  icon: Icons.map,
-                  title: "Live Tracking",
-                  active: _selectedSection == "tracking",
-                  expanded: _isSidebarExpanded,
-                  onTap: () => _goToSection("tracking"),
-                ),
-                SidebarNavItem(
-                  icon: Icons.warning,
-                  title: "SOS Alerts",
-                  active: _selectedSection == "sos",
-                  expanded: _isSidebarExpanded,
-                  onTap: () => _goToSection("sos"),
-                ),
-                SidebarNavItem(
-                  icon: Icons.people,
-                  title: "Guards",
-                  active: _selectedSection == "guards",
-                  expanded: _isSidebarExpanded,
-                  onTap: () => _goToSection("guards"),
-                ),
-                SidebarNavItem(
-                  icon: Icons.history,
-                  title: "Logs",
-                  active: _selectedSection == "logs",
-                  expanded: _isSidebarExpanded,
-                  onTap: () => _goToSection("logs"),
-                ),
-                const Spacer(),
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: _isSidebarExpanded
@@ -205,6 +236,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return 'SOS Alerts';
       case 'guards':
         return 'Guards';
+      case 'schedule':
+        return 'ตารางงาน';
+      case 'tasks':
+        return 'มอบหมายงาน';
+      case 'incidents':
+        return 'รายงานเหตุการณ์';
       case 'logs':
         return 'Recent Logs';
       default:
@@ -230,6 +267,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           onSearchChanged: (v) => setState(() => _search = v),
           onLocate: _focusGuard,
         );
+      case 'schedule':
+        return const AdminScheduleSection();
+      case 'tasks':
+        return const AdminTasksSection();
+      case 'incidents':
+        return const AdminIncidentsSection();
       case 'logs':
         return const LogsSection();
       default:

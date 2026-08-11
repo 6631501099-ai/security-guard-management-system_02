@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'guard_nav_helper.dart';
 import 'guard_theme.dart';
 import 'guard_header.dart';
 import 'guard_bottom_nav.dart';
+import 'guard_location_service.dart';
 
 class IncidentReportScreen extends StatefulWidget {
   const IncidentReportScreen({super.key});
@@ -15,6 +19,7 @@ class IncidentReportScreen extends StatefulWidget {
 }
 
 class _IncidentReportScreenState extends State<IncidentReportScreen> {
+  final GuardLocationService _locationService = GuardLocationService();
   int _navIndex = 2;
   String? _incidentType;
   final TextEditingController _descController = TextEditingController();
@@ -25,6 +30,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   bool _isRecordingNote = false;
   Duration _noteDuration = Duration.zero;
   Timer? _noteTimer;
+  bool _submitting = false;
 
   final List<String> _incidentTypes = const [
     "บุคคลต้องสงสัย",
@@ -109,25 +115,79 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  void _submit() {
+  /// Uploads the attached photo (if any) to Storage, captures a best-effort
+  /// GPS fix, and writes the report to Firestore's `incidents` collection
+  /// so it shows up in the admin's "รายงานเหตุการณ์" inbox.
+  ///
+  /// NOTE: video attachments and voice notes are captured locally in this
+  /// screen but not yet uploaded anywhere — only the photo and text
+  /// description are persisted. Wire those up to Storage the same way as
+  /// the photo below if/when you need them on the admin side too.
+  Future<void> _submit() async {
     if (_incidentType == null) {
       _showSnack("กรุณาเลือกรูปแบบเหตุการณ์");
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: GuardTheme.green,
-        content: Text("ส่งรายงานเรียบร้อยแล้ว"),
-      ),
-    );
-    setState(() {
-      _incidentType = null;
-      _descController.clear();
-      _photoFile = null;
-      _videoFile = null;
-      _isRecordingNote = false;
-      _noteDuration = Duration.zero;
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showSnack("กรุณาเข้าสู่ระบบก่อนส่งรายงาน");
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      String? photoUrl;
+      if (_photoFile != null) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('incident_photos')
+            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await ref.putFile(_photoFile!);
+        photoUrl = await ref.getDownloadURL();
+      }
+
+      double? lat;
+      double? lng;
+      try {
+        final pos = await Geolocator.getCurrentPosition();
+        lat = pos.latitude;
+        lng = pos.longitude;
+      } catch (_) {
+        // Location is a nice-to-have on the report — don't block
+        // submission if GPS isn't available right now.
+      }
+
+      final guardName = await _locationService.fetchUserName(user.uid);
+      await _locationService.submitIncident(
+        uid: user.uid,
+        guardName: guardName,
+        type: _incidentType!,
+        description: _descController.text.trim(),
+        photoUrl: photoUrl,
+        lat: lat,
+        lng: lng,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: GuardTheme.green,
+          content: Text("ส่งรายงานเรียบร้อยแล้ว"),
+        ),
+      );
+      setState(() {
+        _incidentType = null;
+        _descController.clear();
+        _photoFile = null;
+        _videoFile = null;
+        _isRecordingNote = false;
+        _noteDuration = Duration.zero;
+      });
+    } catch (e) {
+      if (mounted) _showSnack("ส่งรายงานไม่สำเร็จ: $e");
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -217,11 +277,18 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        onPressed: _submit,
-                        icon: const Icon(Icons.send),
-                        label: const Text(
-                          "ส่งรายงาน",
-                          style: TextStyle(
+                        onPressed: _submitting ? null : _submit,
+                        icon: _submitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send),
+                        label: Text(
+                          _submitting ? "กำลังส่งรายงาน..." : "ส่งรายงาน",
+                          style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),

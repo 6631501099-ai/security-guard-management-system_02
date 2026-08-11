@@ -70,6 +70,35 @@ class GuardActions {
   }
 
   // ---------------------------------------------------------------------
+  // SOS ACCEPT — marks the alert accepted AND writes a notification back
+  // to the guard who sent it, so their Alerts screen shows a real
+  // response instead of just going quiet. `sos` is the SOS doc's data
+  // (must include the `uid` field written by GuardLocationService.sendSOS).
+  // ---------------------------------------------------------------------
+
+  static Future<void> acceptSos(
+    String docId,
+    Map<String, dynamic> sos,
+  ) async {
+    final firestore = FirebaseFirestore.instance;
+    await firestore.collection('sos').doc(docId).update({
+      'status': 'accepted',
+    });
+
+    final targetUid = sos['uid']?.toString();
+    if (targetUid != null && targetUid.isNotEmpty) {
+      await firestore.collection('notifications').add({
+        'targetUid': targetUid,
+        'title': 'SOS ได้รับการตอบรับแล้ว',
+        'subtitle': 'แอดมินรับทราบการแจ้งเหตุฉุกเฉินของคุณแล้ว กำลังส่งความช่วยเหลือ',
+        'category': 'emergency',
+        'relatedId': docId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // EDIT — writes to both `users/{uid}` (what the guard app itself reads
   // for its own profile) and `locations/{uid}` (so the roster/live-tracking
   // labels update immediately, without waiting for the guard to reconnect).

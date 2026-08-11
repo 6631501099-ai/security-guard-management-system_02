@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'guard_location_service.dart';
@@ -19,8 +20,21 @@ class GuardDashboardScreen extends StatefulWidget {
   State<GuardDashboardScreen> createState() => _GuardDashboardScreenState();
 }
 
+/// Maps the `iconKey` string stored on each activity-log entry to an
+/// actual icon/color pair for display. Keep this in sync with the
+/// `iconKey` values GuardLocationService.logActivity is called with
+/// ('checkin', 'checkout', 'task', 'incident', 'sos', ...).
+const Map<String, ({IconData icon, Color color})> _activityIcons = {
+  'checkin': (icon: Icons.login, color: GuardTheme.primaryRed),
+  'checkout': (icon: Icons.logout, color: GuardTheme.textGrey),
+  'task': (icon: Icons.verified_user, color: GuardTheme.green),
+  'incident': (icon: Icons.description, color: GuardTheme.orange),
+  'sos': (icon: Icons.warning_amber_rounded, color: GuardTheme.primaryRed),
+};
+
 class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   final GuardLocationService _locationService = GuardLocationService();
+  final User? _user = FirebaseAuth.instance.currentUser;
   int _navIndex = 0;
   late String _displayName = widget.guardName;
   final TextEditingController _sosController = TextEditingController();
@@ -63,30 +77,6 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
     );
   }
 
-  final List<_ActivityItem> _activities = const [
-    _ActivityItem(
-      icon: Icons.verified_user,
-      iconColor: GuardTheme.green,
-      title: "ตรวจสอบจุด",
-      subtitle: "Verified security point at S1 Building",
-      time: "08:45 น.",
-    ),
-    _ActivityItem(
-      icon: Icons.gps_fixed,
-      iconColor: GuardTheme.orange,
-      title: "ตรวจสอบตำแหน่ง",
-      subtitle: "Status confirmed with Control Center",
-      time: "08:12 น.",
-    ),
-    _ActivityItem(
-      icon: Icons.login,
-      iconColor: GuardTheme.primaryRed,
-      title: "เข้างาน",
-      subtitle: "Duty commenced at Main gate",
-      time: "07:00 น.",
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +96,7 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
                     const SizedBox(height: 24),
                     const Text("กิจกรรมล่าสุด", style: GuardTheme.sectionTitle),
                     const SizedBox(height: 12),
-                    ..._activities.map(_buildActivityTile),
+                    _buildActivitySection(),
                   ],
                 ),
               ),
@@ -123,6 +113,82 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
       ),
     );
   }
+
+  Widget _buildActivitySection() {
+    if (_user == null) {
+      return const Text("กรุณาเข้าสู่ระบบ", style: TextStyle(color: GuardTheme.textGrey));
+    }
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _locationService.watchRecentActivity(_user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text(
+            "โหลดกิจกรรมไม่สำเร็จ: ${snapshot.error}",
+            style: const TextStyle(color: GuardTheme.textGrey),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              "ยังไม่มีกิจกรรมล่าสุด — เริ่มเข้างานหรือส่งรายงานเพื่อดูที่นี่",
+              style: TextStyle(color: GuardTheme.textGrey),
+            ),
+          );
+        }
+        return Column(children: docs.map(_activityTile).toList());
+      },
+    );
+  }
+
+  Widget _activityTile(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    final style = _activityIcons[data['iconKey']] ??
+        (icon: Icons.notifications_none, color: GuardTheme.textGrey);
+    final ts = data['timestamp'] as Timestamp?;
+    final timeLabel = ts == null ? '' : _formatClock(ts.toDate());
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: GuardTheme.cardDecoration(radius: 16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: style.color.withOpacity(0.12),
+            child: Icon(style.icon, color: style.color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(data['title'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  data['subtitle'] ?? '',
+                  style: const TextStyle(
+                      fontSize: 12, color: GuardTheme.textGrey),
+                ),
+              ],
+            ),
+          ),
+          Text(timeLabel,
+              style: const TextStyle(fontSize: 12, color: GuardTheme.textGrey)),
+        ],
+      ),
+    );
+  }
+
+  String _formatClock(DateTime d) =>
+      "${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')} น.";
 
   Widget _buildHeader() {
     return Container(
@@ -250,53 +316,4 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
       ),
     );
   }
-
-  Widget _buildActivityTile(_ActivityItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: GuardTheme.cardDecoration(radius: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: item.iconColor.withOpacity(0.12),
-            child: Icon(item.icon, color: item.iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                  item.subtitle,
-                  style: const TextStyle(
-                      fontSize: 12, color: GuardTheme.textGrey),
-                ),
-              ],
-            ),
-          ),
-          Text(item.time,
-              style: const TextStyle(fontSize: 12, color: GuardTheme.textGrey)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityItem {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String time;
-
-  const _ActivityItem({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-  });
 }

@@ -168,12 +168,8 @@ class _SosSectionState extends State<SosSection> {
                                 icon: Icons.check,
                                 label: 'Accept',
                                 color: AppColors.success,
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('sos')
-                                      .doc(doc.id)
-                                      .update({'status': 'accepted'});
-                                },
+                                onPressed: () =>
+                                    GuardActions.acceptSos(doc.id, data),
                               ),
                           ],
                         ),

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'admin_theme.dart';
@@ -93,10 +92,7 @@ void showSosDetailsSheet(
                   label: "Accept",
                   color: AppColors.success,
                   onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection("sos")
-                        .doc(docId)
-                        .update({"status": "accepted"});
+                    await GuardActions.acceptSos(docId, sos);
                     if (sheetContext.mounted) Navigator.pop(sheetContext);
                   },
                 ),

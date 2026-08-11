@@ -34,6 +34,15 @@ String _formatClock(DateTime d) => "${_two(d.hour)}:${_two(d.minute)} น.";
 /// Check In/Out screen — restores the real GPS/Firebase logic from the
 /// original guard_page.dart (permission, live position stream, checkpoint
 /// logging, working-status toggle) inside the new mockup-matching UI.
+///
+/// IMPORTANT: `_positionStream`/`_heartbeatTimer` live on this widget's
+/// State, so they stop the moment this screen is disposed — which
+/// happens whenever the guard navigates away (back button OR switching
+/// bottom-nav tabs, since `navigateToTab` uses `pushReplacement`). To
+/// avoid silently losing live tracking for the rest of the shift, this
+/// screen re-reads the guard's real `working`/`shiftStart` state from
+/// Firestore on `initState` and re-attaches tracking if a shift is
+/// already in progress, instead of always assuming "not working".
 class CheckInOutScreen extends StatefulWidget {
   const CheckInOutScreen({super.key});
 
@@ -56,6 +65,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
   bool _isWorking = false;
   bool _inScope = true;
   bool _busy = false;
+  bool _restoring = true;
   Position? _currentPosition;
   String _name = "";
   DateTime? _shiftStart;
@@ -68,6 +78,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
     });
     _loadProfile();
     _primeLocation();
+    _restoreShiftState();
   }
 
   @override
@@ -105,6 +116,30 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
     });
   }
 
+  /// Checks whether this guard is already mid-shift (per Firestore) and,
+  /// if so, restores `_isWorking`/`_shiftStart` and re-attaches the
+  /// position stream + heartbeat instead of showing "เข้างาน" as if
+  /// nothing were happening.
+  Future<void> _restoreShiftState() async {
+    if (_user == null) {
+      if (mounted) setState(() => _restoring = false);
+      return;
+    }
+    final working = await _locationService.fetchWorkingStatus(_user.uid);
+    if (!working) {
+      if (mounted) setState(() => _restoring = false);
+      return;
+    }
+    final shiftStart = await _locationService.fetchShiftStart(_user.uid);
+    if (!mounted) return;
+    _attachTracking();
+    setState(() {
+      _isWorking = true;
+      _shiftStart = shiftStart ?? DateTime.now();
+      _restoring = false;
+    });
+  }
+
   Future<void> _toggleShift() async {
     if (_user == null || _busy) return;
     setState(() => _busy = true);
@@ -120,43 +155,15 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
     }
   }
 
-  Future<void> _startShift() async {
-    final result = await _locationService.requestPermission();
-    if (!mounted) return;
-
-    if (!result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.orange,
-          content: Text(result.errorMessage ?? "ไม่พบตำแหน่ง GPS"),
-        ),
-      );
-      return;
-    }
-
-    final position = result.position!;
-    final inScope = _locationService.distanceToCenter(position) <=
-        GuardConstants.scopeRadiusMeters;
-
-    await _locationService.setWorkingStatus(_user!.uid, working: true);
-    await _locationService.logCheckpoint(
-      uid: _user.uid,
-      name: _name,
-      email: _user.email,
-      position: position,
-      inScope: inScope,
-    );
-    await _locationService.updateLiveLocation(
-      uid: _user.uid,
-      name: _name,
-      email: _user.email,
-      position: position,
-      inScope: inScope,
-    );
-
+  /// Shared by both a fresh check-in and `_restoreShiftState` resuming an
+  /// already-active shift: attaches the live position stream and the
+  /// heartbeat timer that keep `locations/{uid}` fresh for the admin
+  /// dashboard.
+  void _attachTracking() {
+    _positionStream?.cancel();
     _positionStream = _locationService.watchPosition(
       onUpdate: (pos, insideScope) async {
-        if (!mounted) return;
+        if (!mounted || _user == null) return;
         final wasInScope = _inScope;
         setState(() {
           _currentPosition = pos;
@@ -181,6 +188,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
       },
     );
 
+    _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
       if (_currentPosition == null || _user == null) return;
       await _locationService.updateLiveLocation(
@@ -191,6 +199,44 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
         inScope: _inScope,
       );
     });
+  }
+
+  Future<void> _startShift() async {
+    final result = await _locationService.requestPermission();
+    if (!mounted) return;
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.orange,
+          content: Text(result.errorMessage ?? "ไม่พบตำแหน่ง GPS"),
+        ),
+      );
+      return;
+    }
+
+    final position = result.position!;
+    final inScope = _locationService.distanceToCenter(position) <=
+        GuardConstants.scopeRadiusMeters;
+
+    await _locationService.setWorkingStatus(_user!.uid, working: true);
+    await _locationService.markShiftStarted(_user.uid);
+    await _locationService.logCheckpoint(
+      uid: _user.uid,
+      name: _name,
+      email: _user.email,
+      position: position,
+      inScope: inScope,
+    );
+    await _locationService.updateLiveLocation(
+      uid: _user.uid,
+      name: _name,
+      email: _user.email,
+      position: position,
+      inScope: inScope,
+    );
+
+    _attachTracking();
 
     if (!mounted) return;
     setState(() {
@@ -200,6 +246,14 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
       _shiftStart = DateTime.now();
     });
 
+    await _locationService.logActivity(
+      uid: _user.uid,
+      iconKey: 'checkin',
+      title: 'เข้างาน',
+      subtitle: 'Duty commenced',
+    );
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: GuardTheme.green,
@@ -226,6 +280,12 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
 
     await _locationService.markInactive(_user!.uid);
     await _locationService.setWorkingStatus(_user.uid, working: false);
+    await _locationService.logActivity(
+      uid: _user.uid,
+      iconKey: 'checkout',
+      title: 'ออกงาน',
+      subtitle: 'Duty ended',
+    );
 
     if (!mounted) return;
     setState(() {
@@ -364,7 +424,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
                     const SizedBox(height: 20),
                     Center(
                       child: GestureDetector(
-                        onTap: _busy ? null : _toggleShift,
+                        onTap: (_busy || _restoring) ? null : _toggleShift,
                         child: Container(
                           width: 130,
                           height: 130,
@@ -379,7 +439,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: _busy
+                          child: (_busy || _restoring)
                               ? const CircularProgressIndicator(
                                   color: GuardTheme.primaryRed)
                               : Column(

@@ -1,31 +1,33 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'guard_nav_helper.dart';
 import 'guard_theme.dart';
 import 'guard_header.dart';
 import 'guard_bottom_nav.dart';
+import 'guard_location_service.dart';
 
-/// "emergency"/"notice" show up under the "แจ้ง" tab (things needing your
-/// attention); "system" shows up under "อื่นๆ" (informational/completed).
+/// 'emergency' shows up under the "แจ้ง" tab (things needing your
+/// attention) alongside 'notice'; 'system' shows up under "อื่นๆ"
+/// (informational/completed).
 enum AlertCategory { emergency, notice, system }
 
-class AlertEntry {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final String time;
-  final AlertCategory category;
-
-  const AlertEntry({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.time,
-    required this.category,
-  });
+AlertCategory _categoryFromString(String? raw) {
+  switch (raw) {
+    case 'emergency':
+      return AlertCategory.emergency;
+    case 'system':
+      return AlertCategory.system;
+    default:
+      return AlertCategory.notice;
+  }
 }
 
+/// Live feed of alerts targeted at this guard, read from the
+/// `notifications` collection. Entries are written by admin actions —
+/// accepting an SOS (admin_guard_actions.dart's acceptSos), assigning a
+/// task or shift (admin_tasks_screen.dart / admin_schedule_screen.dart) —
+/// so this screen reflects real events instead of sample data.
 class GuardAlertsScreen extends StatefulWidget {
   const GuardAlertsScreen({super.key});
 
@@ -35,43 +37,10 @@ class GuardAlertsScreen extends StatefulWidget {
 
 class _GuardAlertsScreenState extends State<GuardAlertsScreen>
     with SingleTickerProviderStateMixin {
+  final GuardLocationService _locationService = GuardLocationService();
+  final User? _user = FirebaseAuth.instance.currentUser;
   int _navIndex = 2;
   late final TabController _tabController;
-
-  final List<AlertEntry> _all = const [
-    AlertEntry(
-      title: "แจ้งเตือนฉุกเฉิน - จุด S1",
-      subtitle: "ส่งสัญญาณ SOS แล้ว",
-      icon: Icons.warning_amber_rounded,
-      color: GuardTheme.primaryRed,
-      time: "2 นาทีที่แล้ว",
-      category: AlertCategory.emergency,
-    ),
-    AlertEntry(
-      title: "จำเป็นการเปลี่ยนเวร",
-      subtitle: "เวรของคุณเปลี่ยนเป็น 15 น.",
-      icon: Icons.swap_horiz,
-      color: Colors.blueAccent,
-      time: "35 นาทีที่แล้ว",
-      category: AlertCategory.notice,
-    ),
-    AlertEntry(
-      title: "เพื่อการทำงาน",
-      subtitle: "ระบบแจ้งเตือนก่อนเข้ากะ",
-      icon: Icons.notifications_active_outlined,
-      color: GuardTheme.orange,
-      time: "1 ชม.ที่แล้ว",
-      category: AlertCategory.notice,
-    ),
-    AlertEntry(
-      title: "ดูแลระบบความปลอดภัย",
-      subtitle: "เรียบร้อยแล้ว",
-      icon: Icons.check_circle_outline,
-      color: GuardTheme.green,
-      time: "เมื่อวาน",
-      category: AlertCategory.system,
-    ),
-  ];
 
   @override
   void initState() {
@@ -112,18 +81,50 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
               ),
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildList(_all),
-                  _buildList(_all
-                      .where((a) => a.category != AlertCategory.system)
-                      .toList()),
-                  _buildList(_all
-                      .where((a) => a.category == AlertCategory.system)
-                      .toList()),
-                ],
-              ),
+              child: _user == null
+                  ? const Center(
+                      child: Text(
+                        "กรุณาเข้าสู่ระบบ",
+                        style: TextStyle(color: GuardTheme.textGrey),
+                      ),
+                    )
+                  : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _locationService.watchMyAlerts(_user.uid),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              "โหลดการแจ้งเตือนไม่สำเร็จ: ${snapshot.error}",
+                              style:
+                                  const TextStyle(color: GuardTheme.textGrey),
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        final docs = snapshot.data!.docs;
+                        return TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildList(docs),
+                            _buildList(docs
+                                .where((d) =>
+                                    _categoryFromString(
+                                        d.data()['category']) !=
+                                    AlertCategory.system)
+                                .toList()),
+                            _buildList(docs
+                                .where((d) =>
+                                    _categoryFromString(
+                                        d.data()['category']) ==
+                                    AlertCategory.system)
+                                .toList()),
+                          ],
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -138,23 +139,38 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
     );
   }
 
-  Widget _buildList(List<AlertEntry> items) {
+  Widget _buildList(List<QueryDocumentSnapshot<Map<String, dynamic>>> items) {
     if (items.isEmpty) {
-      return Center(
+      return const Center(
         child: Text(
           "ไม่มีการแจ้งเตือนในหมวดนี้",
-          style: const TextStyle(color: GuardTheme.textGrey),
+          style: TextStyle(color: GuardTheme.textGrey),
         ),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: items.length,
-      itemBuilder: (context, i) => _alertTile(items[i]),
+      itemBuilder: (context, i) => _alertTile(items[i].data()),
     );
   }
 
-  Widget _alertTile(AlertEntry alert) {
+  Widget _alertTile(Map<String, dynamic> data) {
+    final category = _categoryFromString(data['category']);
+    final (icon, color) = switch (category) {
+      AlertCategory.emergency => (
+          Icons.warning_amber_rounded,
+          GuardTheme.primaryRed
+        ),
+      AlertCategory.notice => (
+          Icons.notifications_active_outlined,
+          GuardTheme.orange
+        ),
+      AlertCategory.system => (Icons.check_circle_outline, GuardTheme.green),
+    };
+    final ts = data['timestamp'] as Timestamp?;
+    final timeLabel = ts == null ? '' : _relativeTime(ts.toDate());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -162,24 +178,34 @@ class _GuardAlertsScreenState extends State<GuardAlertsScreen>
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: alert.color.withOpacity(0.12),
-            child: Icon(alert.icon, color: alert.color, size: 20),
+            backgroundColor: color.withOpacity(0.12),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(alert.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(alert.subtitle,
-                    style: const TextStyle(fontSize: 12, color: GuardTheme.textGrey)),
+                Text(data['title'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(data['subtitle'] ?? '',
+                    style: const TextStyle(
+                        fontSize: 12, color: GuardTheme.textGrey)),
               ],
             ),
           ),
-          Text(alert.time,
+          Text(timeLabel,
               style: const TextStyle(fontSize: 11, color: GuardTheme.textGrey)),
         ],
       ),
     );
+  }
+
+  String _relativeTime(DateTime d) {
+    final diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 1) return "เมื่อสักครู่";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} นาทีที่แล้ว";
+    if (diff.inHours < 24) return "${diff.inHours} ชม.ที่แล้ว";
+    return "${diff.inDays} วันที่แล้ว";
   }
 }
