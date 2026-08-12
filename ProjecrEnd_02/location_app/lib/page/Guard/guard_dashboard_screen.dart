@@ -77,63 +77,52 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
     );
   }
 
-  @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: GuardTheme.scaffoldBg,
-    body: SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          // 1. ส่วน Header และ Grid ปุ่มกดที่ซ้อนกันอยู่
-          Stack(
-            clipBehavior: Clip.none,
+ @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: GuardTheme.scaffoldBg,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          child: Column(
             children: [
+              // 1. Header ด้านบนสุด
               _buildHeader(),
-              Positioned(
-                left: 20,
-                right: 20,
-                bottom: -200, // Grid ยื่นลงมาข้างล่าง 200px
-                child: _buildActionGrid(context),
+
+              // 2. Grid ปุ่มกด (ใช้ Transform/Margin ดึงขึ้นไปทับ Header แทน Stack)
+              Transform.translate(
+                offset: const Offset(0, -40), // ดึงขึ้นไปเกย Header 40px
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildActionGrid(context),
+                ),
+              ),
+
+              // 3. ส่วนเนื้อหากิจกรรมด้านล่าง
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("กิจกรรมล่าสุด", style: GuardTheme.sectionTitle),
+                    const SizedBox(height: 12),
+                    _buildActivitySection(),
+                  ],
+                ),
               ),
             ],
           ),
-
-          // 2. ส่วนเนื้อหาด้านล่างที่ Scroll ได้
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // เว้นพื้นที่ว่างเพื่อไม่ให้ Grid ที่ยื่นลงมาทับเนื้อหาด้านล่าง
-                  // (ปรับตัวเลข 210-220 ตามความเหมาะสมของหน้าจอ)
-                  const SizedBox(height: 210), 
-
-                  // ย้าย "กิจกรรมล่าสุด" ลงมาอยู่ตรงนี้ เพื่อให้อยู่หัวข้อรายการกิจกรรมพอดี
-                  const Text("กิจกรรมล่าสุด", style: GuardTheme.sectionTitle),
-                  
-                  const SizedBox(height: 12), // เว้นระยะห่างระหว่างหัวข้อกับรายการ
-
-                  // รายการกิจกรรมทั้งหมด
-                  _buildActivitySection(),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  
-    bottomNavigationBar: GuardBottomNav(
-      currentIndex: _navIndex,
-      onTap: (i) {
-        if (i == _navIndex) return;
-        navigateToTab(context, i);
-      },
-    ), // ปิด GuardBottomNav
-  ); // ปิด Scaffold ตรงนี้!
-} // ปิด Widget build(BuildContext context)
+      bottomNavigationBar: GuardBottomNav(
+        currentIndex: _navIndex,
+        onTap: (i) {
+          if (i == _navIndex) return;
+          navigateToTab(context, i);
+        },
+      ),
+    );
+  }
 
   Widget _buildActivitySection() {
     if (_user == null) {
@@ -326,10 +315,12 @@ Widget build(BuildContext context) {
     required VoidCallback onTap,
     bool isAlert = false,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap, // ทำงานได้ตามปกติแล้ว
+        child: Ink(
         decoration: BoxDecoration(
           color: isAlert ? GuardTheme.emergencyRed : GuardTheme.cardBg,
           borderRadius: BorderRadius.circular(20),
@@ -337,12 +328,14 @@ Widget build(BuildContext context) {
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisAlignment: MainAxisAlignment.center, // จัดกลางแนวตั้ง
+            crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: isAlert ? Colors.white : GuardTheme.primaryRed),
-            const Spacer(),
-            Text(
-              label,
+            Icon(icon, color: isAlert ? Colors.white : GuardTheme.primaryRed, size: 28),
+           const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isAlert ? Colors.white : Colors.black87,
@@ -350,6 +343,7 @@ Widget build(BuildContext context) {
             ),
           ],
         ),
+      ),
       ),
     );
   }
