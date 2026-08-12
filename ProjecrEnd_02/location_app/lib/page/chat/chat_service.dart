@@ -1,0 +1,122 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'chat_models.dart';
+
+/// Firestore-backed 1:1 chat between any two `users/{uid}` accounts
+/// (guard <-> admin, guard <-> guard, etc). See chat_models.dart for the
+/// exact document shape. Deliberately self-contained so it doesn't touch
+/// any of the existing services/screens.
+class ChatService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  String? get myUid => FirebaseAuth.instance.currentUser?.uid;
+
+  /// Deterministic chat id for a pair of uids, independent of order.
+  String chatIdFor(String uidA, String uidB) {
+    final sorted = [uidA, uidB]..sort();
+    return '${sorted[0]}_${sorted[1]}';
+  }
+
+  /// All chat threads the current user is part of, newest first.
+  Stream<List<ChatThread>> watchMyThreads() {
+    final uid = myUid;
+    if (uid == null) return const Stream.empty();
+    return _db
+        .collection('chats')
+        .where('participants', arrayContains: uid)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => ChatThread.fromDoc(d, uid)).toList());
+  }
+
+  /// People the current user can start a chat with: everyone in `users`
+  /// except themselves (guards can message admins/other guards and
+  /// vice-versa — the mockups show both roles using the same chat UI).
+  Stream<List<ChatUser>> watchContacts() {
+    final uid = myUid;
+    if (uid == null) return const Stream.empty();
+    return _db.collection('users').snapshots().map(
+          (snap) => snap.docs
+              .where((d) => d.id != uid)
+              .map(ChatUser.fromDoc)
+              .toList(),
+        );
+  }
+
+  /// Makes sure a chat document exists for (me, other) and returns its id.
+  Future<String> openOrCreateChat(ChatUser other) async {
+    final uid = myUid;
+    if (uid == null) throw StateError('ไม่ได้เข้าสู่ระบบ');
+    final id = chatIdFor(uid, other.uid);
+    final ref = _db.collection('chats').doc(id);
+    final doc = await ref.get();
+
+    if (!doc.exists) {
+      String myName = 'ผู้ใช้งาน';
+      String? myPhoto;
+      final myDoc = await _db.collection('users').doc(uid).get();
+      final myData = myDoc.data();
+      if (myData != null) {
+        myName = (myData['name'] as String?) ?? myName;
+        myPhoto = myData['photoUrl'] as String?;
+      }
+
+      await ref.set({
+        'participants': [uid, other.uid],
+        'participantNames': {uid: myName, other.uid: other.name},
+        'participantPhotos': {uid: myPhoto, other.uid: other.photoUrl},
+        'lastMessage': '',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderId': null,
+        'unread_$uid': 0,
+        'unread_${other.uid}': 0,
+      });
+    }
+    return id;
+  }
+
+  /// Messages in a chat, oldest first (ready to feed a bottom-anchored list).
+  Stream<List<ChatMessage>> watchMessages(String chatId) {
+    return _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .snapshots()
+        .map((snap) => snap.docs.map(ChatMessage.fromDoc).toList());
+  }
+
+  Future<void> sendMessage({
+    required String chatId,
+    required String otherUid,
+    required String text,
+  }) async {
+    final uid = myUid;
+    if (uid == null || text.trim().isEmpty) return;
+    final chatRef = _db.collection('chats').doc(chatId);
+
+    await chatRef.collection('messages').add({
+      'senderId': uid,
+      'text': text.trim(),
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    await chatRef.set({
+      'lastMessage': text.trim(),
+      'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastSenderId': uid,
+      'unread_$otherUid': FieldValue.increment(1),
+      'unread_$uid': 0,
+    }, SetOptions(merge: true));
+  }
+
+  /// Call when opening a thread so the badge clears for the current user.
+  Future<void> markRead(String chatId) async {
+    final uid = myUid;
+    if (uid == null) return;
+    await _db.collection('chats').doc(chatId).set({
+      'unread_$uid': 0,
+    }, SetOptions(merge: true));
+  }
+}

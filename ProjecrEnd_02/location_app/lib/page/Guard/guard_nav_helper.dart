@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:location_app/page/chat/chat_list_screen.dart';
 import 'guard_dashboard_screen.dart';
 import 'guard_tasks_screen.dart';
 import 'guard_alerts_screen.dart';
@@ -19,9 +20,13 @@ void navigateToTab(BuildContext context, int index) {
       target = const GuardAlertsScreen();
       break;
     case 3:
-    default:
+      target = const ChatListScreen();
+      break;
+    case 4:
       target = const ManagerProfileScreen();
       break;
+      default:
+      target = const GuardDashboardScreen();
   }
   Navigator.of(context).pushReplacement(
     MaterialPageRoute(builder: (_) => target),

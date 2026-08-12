@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 class GuardTheme {
   GuardTheme._();
 
-  static const Color primaryRed = Color(0xFFB3261E);
+  static const Color primaryRed = Color(0xFF800000);
   static const Color darkRed = Color(0xFF4A0000);
   static const Color scaffoldBg = Color(0xFFF8F9FA);
   static const Color profileBg = Color(0xFFFAFAF9);
   static const Color cardBg = Colors.white;
   static const Color green = Color(0xFF2E7D32);
-  static const Color orange = Color(0xFFF9A825);
+  static const Color orange = Color(0xFFD4AF37);
   static const Color textGrey = Color(0xFF6B7280);
 
   static BoxShadow get softShadow => BoxShadow(

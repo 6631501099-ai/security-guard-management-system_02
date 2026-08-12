@@ -30,7 +30,7 @@ class ManagerProfileScreen extends StatefulWidget {
 }
 
 class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
-  int _navIndex = 3;
+  int _navIndex = 4;
 
   late String _name = widget.name ?? "เจ้าหน้าที่";
   late String _email = widget.email ?? FirebaseAuth.instance.currentUser?.email ?? "-";

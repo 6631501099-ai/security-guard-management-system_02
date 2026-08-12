@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'page/auth_check.dart';
 import 'package:flutter/services.dart';
+import 'page/splash_screen.dart';
 
 ////////////////////////////////////////////////////////////
 /// MAIN
@@ -54,7 +55,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: "Security Guard System",
           theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.red),
-          home: const AuthCheck(),
+          home: const SplashScreen(),
         );
       },
     );

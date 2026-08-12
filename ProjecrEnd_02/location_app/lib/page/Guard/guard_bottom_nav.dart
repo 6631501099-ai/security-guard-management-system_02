@@ -7,19 +7,21 @@ class GuardBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<String> labels;
+  final bool hasNotification;
 
   const GuardBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.labels = const ["หน้าหลัก", "งาน", "แจ้งเตือน", "โปรไฟล์"],
+    this.hasNotification = false,
+    this.labels = const ["หน้าหลัก", "ภารกิจ", "SOS", "แชท", "โปรไฟล์"],
   });
 
   @override
   Widget build(BuildContext context) {
-    final icons = [Icons.home_rounded, Icons.list_alt_rounded, null, Icons.person_rounded];
+    final icons = [Icons.home_rounded, Icons.format_list_bulleted_rounded, null,Icons.chat_bubble_rounded, Icons.person_rounded];
     final scale = GuardTheme.responsiveScale(context);
-    final fabSize = 58 * scale;
+    final fabSize = 76 * scale;
 
     // How much space the phone's own on-screen back/home/recents buttons
     // (or the gesture bar) take up at the bottom. Since main.dart enables
@@ -34,7 +36,7 @@ class GuardBottomNav extends StatelessWidget {
       color: Colors.white,
       padding: EdgeInsets.only(bottom: systemNavInset),
       child: SizedBox(
-        height: 78,
+        height: 90,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.topCenter,
@@ -50,70 +52,113 @@ class GuardBottomNav extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Row(
-                children: List.generate(4, (i) {
-                  if (i == 2) {
-                    return const Expanded(child: SizedBox());
-                  }
-                  final selected = currentIndex == i;
-                  return Expanded(
-                    child: InkWell(
-                      onTap: () => onTap(i),
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icons[i],
-                              color: selected
-                                  ? GuardTheme.primaryRed
-                                  : Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              labels[i],
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: selected
-                                    ? GuardTheme.primaryRed
-                                    : Colors.grey.shade400,
-                                fontWeight:
-                                    selected ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
+              child: // เปลี่ยนจำนวนจาก 4 เป็น 5 ช่องรายการ
+            Row(
+              children: List.generate(5, (i) {
+                if (i == 2) {
+                  return const Expanded(child: SizedBox()); // เว้นช่องกลางไว้ให้ปุ่ม SOS
+                }
+
+                final selected = currentIndex == i;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => onTap(i),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+             children: [
+           // [ไฮไลท์] ซ้อน Stack เพื่อเพิ่มจุด Notification Badge สีส้มที่กระดิ่งแจ้งเตือน (Index 3)
+             Stack(
+               clipBehavior: Clip.none,
+                 children: [
+                   Icon(
+                    icons[i],
+                      size: 26,
+                       color: selected
+                        ? GuardTheme.primaryRed
+                        : Colors.grey.shade400,
+                         ),
+         if (i == 3 && hasNotification)
             Positioned(
-              top: -22 * scale,
-              child: GestureDetector(
-                onTap: () => onTap(2),
-                child: Container(
-                  width: fabSize,
-                  height: fabSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: GuardTheme.primaryRed,
-                    border: Border.all(color: Colors.white, width: 4 * scale),
-                    boxShadow: [
-                      BoxShadow(
-                        color: GuardTheme.primaryRed.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+             right: -2,
+             top: 0,
+             child: Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE6A100),
+                  shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.warning_rounded,
-                      color: Colors.white, size: 24 * scale),
+                ),
+              ),
+            ],
+          ),
+              const SizedBox(height: 4),
+                Text(
+                  labels[i],
+                style: TextStyle(
+                fontSize: 11,
+                color: selected
+                  ? GuardTheme.primaryRed
+                  : Colors.grey.shade400,
+                fontWeight: selected
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+                   ),
+               ),
+              const SizedBox(height: 3),
+             //  เพิ่มจุดสีแดงใต้เมนูที่กำลังเลือกใช้งานอยู่
+          if (selected)
+             Container(
+              width: 4,
+              height: 4,
+              decoration: const BoxDecoration(
+              color: GuardTheme.primaryRed,
+              shape: BoxShape.circle,
+                  ),
+              )
+                else
+              const SizedBox(height: 4),
+               ],
+             ),
+           ),
+          ),
+         );
+       }),
+     ),
+   ),
+            // [ไฮไลท์] ปรับโทนสีและไอคอนปุ่ม SOS ตรงกลางให้เหมือนในภาพ
+          Positioned(
+            top: -24 * scale,
+            child: GestureDetector(
+              onTap: () => onTap(2),
+              child: Container(
+                width: fabSize,
+                height: fabSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF7A0000), // [ไฮไลท์] สีแดงเข้มตามภาพ
+                  border: Border.all(color: Colors.white, width: 4 * scale),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 0),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: const Color(0xFFE5B83A), // [ไฮไลท์] ไอคอนตกใจสีทอง/ส้ม
+                    size: 42 * scale,
+                  ),
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

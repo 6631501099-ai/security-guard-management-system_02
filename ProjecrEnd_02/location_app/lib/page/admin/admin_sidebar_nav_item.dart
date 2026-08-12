@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 /// One tappable row in the left sidebar. Collapses to icon-only when
 /// [expanded] is false, matching the original AnimatedContainer behaviour.
 class SidebarNavItem extends StatelessWidget {

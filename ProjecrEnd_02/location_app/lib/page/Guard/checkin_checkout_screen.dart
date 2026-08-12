@@ -103,7 +103,7 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
     if (!result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.orange,
+          backgroundColor: const Color(0xFFD4AF37),
           content: Text(result.errorMessage ?? "ไม่สามารถเข้าถึงตำแหน่งได้"),
         ),
       );
