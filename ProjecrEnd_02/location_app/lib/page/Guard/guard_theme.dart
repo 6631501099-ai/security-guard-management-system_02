@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 class GuardTheme {
   GuardTheme._();
 
+  static const Color emergencyRed = Color(0xFFE53935);
   static const Color primaryRed = Color(0xFF800000);
   static const Color darkRed = Color(0xFF4A0000);
   static const Color scaffoldBg = Color(0xFFF8F9FA);

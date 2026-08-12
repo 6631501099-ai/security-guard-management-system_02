@@ -29,7 +29,7 @@ const Map<String, ({IconData icon, Color color})> _activityIcons = {
   'checkout': (icon: Icons.logout, color: GuardTheme.textGrey),
   'task': (icon: Icons.verified_user, color: GuardTheme.green),
   'incident': (icon: Icons.description, color: GuardTheme.orange),
-  'sos': (icon: Icons.warning_amber_rounded, color: GuardTheme.primaryRed),
+  'sos': (icon: Icons.warning_amber_rounded, color: GuardTheme.emergencyRed),
 };
 
 class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
@@ -78,41 +78,62 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: GuardTheme.scaffoldBg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildActionGrid(context),
-                    const SizedBox(height: 24),
-                    const Text("กิจกรรมล่าสุด", style: GuardTheme.sectionTitle),
-                    const SizedBox(height: 12),
-                    _buildActivitySection(),
-                  ],
-                ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: GuardTheme.scaffoldBg,
+    body: SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          // 1. ส่วน Header และ Grid ปุ่มกดที่ซ้อนกันอยู่
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _buildHeader(),
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: -200, // Grid ยื่นลงมาข้างล่าง 200px
+                child: _buildActionGrid(context),
+              ),
+            ],
+          ),
+
+          // 2. ส่วนเนื้อหาด้านล่างที่ Scroll ได้
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // เว้นพื้นที่ว่างเพื่อไม่ให้ Grid ที่ยื่นลงมาทับเนื้อหาด้านล่าง
+                  // (ปรับตัวเลข 210-220 ตามความเหมาะสมของหน้าจอ)
+                  const SizedBox(height: 210), 
+
+                  // ย้าย "กิจกรรมล่าสุด" ลงมาอยู่ตรงนี้ เพื่อให้อยู่หัวข้อรายการกิจกรรมพอดี
+                  const Text("กิจกรรมล่าสุด", style: GuardTheme.sectionTitle),
+                  
+                  const SizedBox(height: 12), // เว้นระยะห่างระหว่างหัวข้อกับรายการ
+
+                  // รายการกิจกรรมทั้งหมด
+                  _buildActivitySection(),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      bottomNavigationBar: GuardBottomNav(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          if (i == _navIndex) return;
-          navigateToTab(context, i);
-        },
-      ),
-    );
-  }
+    ),
+  
+    bottomNavigationBar: GuardBottomNav(
+      currentIndex: _navIndex,
+      onTap: (i) {
+        if (i == _navIndex) return;
+        navigateToTab(context, i);
+      },
+    ), // ปิด GuardBottomNav
+  ); // ปิด Scaffold ตรงนี้!
+} // ปิด Widget build(BuildContext context)
 
   Widget _buildActivitySection() {
     if (_user == null) {
@@ -193,7 +214,7 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 26),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 56),
       decoration: const BoxDecoration(
         color: GuardTheme.primaryRed,
         borderRadius: BorderRadius.only(
@@ -204,7 +225,23 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Text(_displayName, style: GuardTheme.screenTitle),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "สวัสดี",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.75),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _displayName,
+                  style: GuardTheme.screenTitle.copyWith(fontSize: 20),
+                ),
+              ],
+            ),
           ),
           Stack(
             children: [
@@ -294,7 +331,7 @@ class _GuardDashboardScreenState extends State<GuardDashboardScreen> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isAlert ? GuardTheme.primaryRed : GuardTheme.cardBg,
+          color: isAlert ? GuardTheme.emergencyRed : GuardTheme.cardBg,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [GuardTheme.softShadow],
         ),

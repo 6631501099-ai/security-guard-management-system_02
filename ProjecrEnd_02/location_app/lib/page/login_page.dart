@@ -66,10 +66,10 @@ class _LoginPageState extends State<LoginPage> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0x22D4AF37),
+                color: const Color.fromARGB(50, 128, 0, 0),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0x44D4AF37),
+                    color: const Color.fromARGB(50, 128, 0, 0),
                     blurRadius: 120,
                     spreadRadius: 30,
                   ),
@@ -85,10 +85,10 @@ class _LoginPageState extends State<LoginPage> {
               height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0x11D4AF37),
+                color: const Color.fromARGB(50, 74, 0, 0),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0x44D4AF37),
+                    color: const Color.fromARGB(50, 74, 0, 0),
                     blurRadius: 100,
                     spreadRadius: 20,
                   ),
@@ -96,86 +96,33 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          Positioned(
-            left: 35,
-            top: 180,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: Color(0xffD4AF37),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 15),
-                ],
-              ),
-            ),
-          ),
-
-          Positioned(
-            right: 40,
-            top: 420,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: const BoxDecoration(
-                color: Color(0xffD4AF37),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 20),
-                ],
-              ),
-            ),
-          ),
-
-          Positioned(
-            right: 55,
-            bottom: 180,
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xffD4AF37),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Color(0xffD4AF37), blurRadius: 10),
-                ],
-              ),
-            ),
-          ),
-
           ////////////////////////////////////////////////////////////
           /// CONTENT
           ////////////////////////////////////////////////////////////
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Container(
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.06),
-
-                    border: Border.all(color: Colors.white12),
-
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black45,
-                        blurRadius: 20,
-                        offset: Offset(0, 10),
+             child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 40),
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.15),
+                        border: Border.all(
+                          color: const Color(0xFFD4AF37).withOpacity(0.4),
+                          width: 1,
+                        ),
                       ),
-                    ],
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset("assets/icon02.png", height: 70),
+                      padding: const EdgeInsets.all(18),
+                      child: Image.asset("assets/icon02.png", fit: BoxFit.contain),
+                    ),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      const Text(
-                        "ลงชื่อเข้าใช้งาน",
+                    const Text(
+                      "ลงชื่อเข้าใช้งาน",
                         style: TextStyle(
                           color: Color(0xffD4AF37),
                           fontSize: 28,
@@ -190,14 +137,34 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 26),
 
-                      TextField(
-                        controller: email,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "อีเมล",
+                            style: TextStyle(
+                              color: Color(0xffD4AF37),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: email,
                         keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: "Email",
+                          hintText: "กรอกอีเมล",
                           hintStyle: const TextStyle(color: Colors.white54),
 
                           prefixIcon: const Icon(
@@ -227,16 +194,23 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
-                      const SizedBox(height: 20),
-
-                      TextField(
-                        controller: password,
+                      const SizedBox(height: 18),
+                          const Text(
+                            "รหัสผ่าน",
+                            style: TextStyle(
+                              color: Color(0xffD4AF37),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: password,
                         obscureText: obscurePassword,
                         style: const TextStyle(color: Colors.white),
 
                         decoration: InputDecoration(
-                          hintText: "Password",
+                          hintText: "รหัสผ่าน",
                           hintStyle: const TextStyle(color: Colors.white54),
 
                           prefixIcon: const Icon(
@@ -280,14 +254,31 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 14),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {},
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                "ลืมรหัสผ่านใช่หรือไม่?",
+                                style: TextStyle(
+                                  color: Color(0xffD4AF37),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
 
-                      const SizedBox(height: 30),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: FilledButton(
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: FilledButton(
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xffD4AF37),
                             foregroundColor: Colors.black,
@@ -311,32 +302,26 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 8),
-
-                      const Text(
-                        "กรอกข้อมูลเพื่อลงชื่อเข้าใช้งาน",
-                        style: TextStyle(color: Colors.white70),
+                      ],
                       ),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RegisterPage(),
-                            ),
-                          );
-                        },
-                        child: const Text("Create Account"),
+                    ),
+                    const SizedBox(height: 26),
+                    Text(
+                      "OFFICIAL SECURITY PORTAL • MFU",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 10,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
+          
+            ],
+      
+    ),
+          );
   }
 }
