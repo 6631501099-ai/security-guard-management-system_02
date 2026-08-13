@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../Guard/guard_bottom_nav.dart';
+import '../Guard/guard_nav_helper.dart';
 import '../Guard/guard_theme.dart';
 import '../Guard/guard_bottom_nav.dart';
 import '../Admin/admin_nav_helper.dart';
@@ -22,6 +24,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
   
   // 0 = ทั้งหมด, 1 = ยังไม่ได้อ่าน, 2 = กลุ่ม
   int _selectedFilter = 0; 
+
+  // This screen is the "แชท" tab (index 3 in GuardBottomNav's 5-tab
+  // layout), reached via `pushReplacement` from navigateToTab — so it
+  // needs its own bottom nav like every other tab screen.
+  final int _navIndex = 3;
 
   @override
   void dispose() {
@@ -63,6 +70,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
+<<<<<<< HEAD
       
       bottomNavigationBar: GuardBottomNav(
         currentIndex: 3,
@@ -70,14 +78,35 @@ class _ChatListScreenState extends State<ChatListScreen> {
         onTap: (i) {
           if (i == 3) return;
           navigateToAdminTab(context, i);
+=======
+      bottomNavigationBar: GuardBottomNav(
+        currentIndex: _navIndex,
+        onTap: (i) {
+          if (i == _navIndex) return;
+          navigateToTab(context, i);
+>>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
         },
       ),
     );
   }
 
+<<<<<<< HEAD
   Widget _buildHeaderBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+=======
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: GuardTheme.headerPadding,
+      decoration: const BoxDecoration(
+        color: GuardTheme.primaryRed,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+>>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -90,9 +119,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           ),
           IconButton(
+<<<<<<< HEAD
             onPressed: _createGroupChat,
             icon: const Icon(Icons.group_add_rounded, color: Color(0xFF800000), size: 26),
             tooltip: 'สร้างแชทกลุ่ม',
+=======
+            // Reached via `pushReplacement` (it's a bottom-nav tab), so
+            // there's no previous route to pop to — go Home explicitly.
+            onPressed: () => navigateToTab(context, 0),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+>>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
           ),
         ],
       ),

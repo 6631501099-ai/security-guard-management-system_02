@@ -177,146 +177,167 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen>
       backgroundColor: GuardTheme.darkRed,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 20, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      "แจ้งเตือนฉุกเฉิน",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+        // The content below used to be a plain fixed-height Column with a
+        // Spacer() pushing the bottom section down. That works fine on
+        // tall screens, but once GuardBottomNav (~90px) started eating
+        // into the available height too, this content no longer fit on
+        // many phones — causing a RenderFlex overflow (the black/yellow
+        // warning stripe) that visually covers whatever text sits at that
+        // edge. Wrapping in LayoutBuilder + SingleChildScrollView +
+        // ConstrainedBox(minHeight) + IntrinsicHeight keeps the exact
+        // same "push to bottom when there's room" look on tall screens,
+        // but lets it scroll instead of overflowing on short ones.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 20, 0),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(context).maybePop(),
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            ),
+                            const Expanded(
+                              child: Text(
+                                "แจ้งเตือนฉุกเฉิน",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 48),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "ฉุกเฉิน",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 28),
-            _buildSosButton(context),
-            const SizedBox(height: 12),
-            AnimatedBuilder(
-              animation: _holdController,
-              builder: (context, child) {
-                final progress = _holdController.value;
-                if (progress <= 0) {
-                  return const Text(
-                    "กดค้างไว้ที่ปุ่ม SOS 3 วินาทีเพื่อยกเลิกการแจ้งเตือน",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
-                  );
-                }
-                final secondsLeft =
-                    (_holdToCancelDuration.inSeconds * (1 - progress)).ceil();
-                return Text(
-                  "กำลังยกเลิก... ปล่อยนิ้วเพื่อหยุด (เหลือ $secondsLeft วิ)",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            if (_sent)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  "${_secondsElapsed.toStringAsFixed(1)}s",
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              _sending
-                  ? "กำลังส่งตำแหน่งของคุณไปยังแอดมิน..."
-                  : _errorMessage != null
-                      ? _errorMessage!
-                      : "ส่งสัญญาณแล้ว กำลังรอการตอบรับ...",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _errorMessage != null
-                    ? Colors.orangeAccent
-                    : Colors.white.withOpacity(0.7),
-                fontSize: 13,
-              ),
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _sending = true;
-                    _errorMessage = null;
-                  });
-                  _sendAlert();
-                },
-                child: const Text("ลองส่งอีกครั้ง",
-                    style: TextStyle(color: Colors.white)),
-              ),
-            ],
-            const Spacer(),
-            if (_sent)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.white70),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "GPS ${_lat?.toStringAsFixed(6)}, ${_lng?.toStringAsFixed(6)}",
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "ฉุกเฉิน",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 28),
+                      _buildSosButton(context),
+                      const SizedBox(height: 12),
+                      AnimatedBuilder(
+                        animation: _holdController,
+                        builder: (context, child) {
+                          final progress = _holdController.value;
+                          if (progress <= 0) {
+                            return const Text(
+                              "กดค้างไว้ที่ปุ่ม SOS 3 วินาทีเพื่อยกเลิกการแจ้งเตือน",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white54, fontSize: 12),
+                            );
+                          }
+                          final secondsLeft =
+                              (_holdToCancelDuration.inSeconds * (1 - progress)).ceil();
+                          return Text(
+                            "กำลังยกเลิก... ปล่อยนิ้วเพื่อหยุด (เหลือ $secondsLeft วิ)",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      if (_sent)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "${_secondsElapsed.toStringAsFixed(1)}s",
+                            style: const TextStyle(
+                                color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _sending
+                            ? "กำลังส่งตำแหน่งของคุณไปยังแอดมิน..."
+                            : _errorMessage != null
+                                ? _errorMessage!
+                                : "ส่งสัญญาณแล้ว กำลังรอการตอบรับ...",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _errorMessage != null
+                              ? Colors.orangeAccent
+                              : Colors.white.withOpacity(0.7),
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 10),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _sending = true;
+                              _errorMessage = null;
+                            });
+                            _sendAlert();
+                          },
+                          child: const Text("ลองส่งอีกครั้ง",
+                              style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                      const Spacer(),
+                      if (_sent)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.white70),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  "GPS ${_lat?.toStringAsFixed(6)}, ${_lng?.toStringAsFixed(6)}",
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _quickAction(Icons.call, "โทรด่วน", _call),
+                          _quickAction(Icons.message, "ส่งข้อความ", _message),
+                          _quickAction(
+                              Icons.share_location,
+                              "แชร์ตำแหน่ง",
+                              _lat == null ? null : _shareLocation),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
               ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _quickAction(Icons.call, "โทรด่วน", _call),
-                _quickAction(Icons.message, "ส่งข้อความ", _message),
-                _quickAction(
-                    Icons.share_location,
-                    "แชร์ตำแหน่ง",
-                    _lat == null ? null : _shareLocation),
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: GuardBottomNav(

@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'chat_models.dart';
 
@@ -112,6 +115,48 @@ class ChatService {
 
     await chatRef.set({
       'lastMessage': text.trim(),
+      'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastSenderId': uid,
+      'unread_$otherUid': FieldValue.increment(1),
+      'unread_$uid': 0,
+    }, SetOptions(merge: true));
+  }
+
+  /// Uploads [imageFile] to Storage under `chat_images/{chatId}/...` and
+  /// writes an image message (optionally with a short [caption]). Mirrors
+  /// the upload pattern already used for incident-report photos and
+  /// profile photos elsewhere in the app.
+  Future<void> sendImageMessage({
+    required String chatId,
+    required String otherUid,
+    required File imageFile,
+    String caption = '',
+  }) async {
+    final uid = myUid;
+    if (uid == null) return;
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('chat_images')
+        .child(chatId)
+        .child('${DateTime.now().millisecondsSinceEpoch}_$uid.jpg');
+    await ref.putFile(imageFile);
+    final imageUrl = await ref.getDownloadURL();
+
+    final chatRef = _db.collection('chats').doc(chatId);
+
+    await chatRef.collection('messages').add({
+      'senderId': uid,
+      'text': caption.trim(),
+      'imageUrl': imageUrl,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    await chatRef.set({
+      // Image-only messages still need a non-empty preview string so the
+      // thread list in ChatListScreen shows something meaningful instead
+      // of a blank line.
+      'lastMessage': caption.trim().isNotEmpty ? caption.trim() : '[รูปภาพ]',
       'lastMessageTime': FieldValue.serverTimestamp(),
       'lastSenderId': uid,
       'unread_$otherUid': FieldValue.increment(1),

@@ -30,7 +30,22 @@ class ChatUser {
 }
 
 /// One row in the `chats` collection: a 1:1 conversation between two
+<<<<<<< HEAD
 /// `users/{uid}` accounts OR a group chat.
+=======
+/// `users/{uid}` accounts. Document id is the two uids sorted and joined
+/// with `_` so the same pair always resolves to the same chat.
+///
+///   chats/{chatId}:
+///     participants: [uidA, uidB]
+///     participantNames: {uid: name}
+///     participantPhotos: {uid: url?}
+///     lastMessage, lastMessageTime, lastSenderId
+///     unread_{uid}: number of unread messages for that participant
+///
+///   chats/{chatId}/messages/{messageId}:
+///     senderId, text, imageUrl?, timestamp
+>>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
 class ChatThread {
   final String id;
   final bool isGroup;
@@ -98,6 +113,7 @@ class ChatMessage {
   final String id;
   final String senderId;
   final String text;
+  final String? imageUrl;
   final DateTime? timestamp;
 
   const ChatMessage({
@@ -105,7 +121,10 @@ class ChatMessage {
     required this.senderId,
     required this.text,
     required this.timestamp,
+    this.imageUrl,
   });
+
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 
   factory ChatMessage.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
@@ -114,6 +133,7 @@ class ChatMessage {
       id: doc.id,
       senderId: (data['senderId'] as String?) ?? '',
       text: (data['text'] as String?) ?? '',
+      imageUrl: data['imageUrl'] as String?,
       timestamp: ts?.toDate(),
     );
   }

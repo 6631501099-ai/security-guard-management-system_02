@@ -317,7 +317,9 @@ class _CheckInOutScreenState extends State<CheckInOutScreen> {
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+              // Standardized header padding — see GuardTheme.headerPadding
+              // doc comment for why this must match every other screen.
+              padding: GuardTheme.headerPadding,
               decoration: const BoxDecoration(
                 color: GuardTheme.primaryRed,
                 borderRadius: BorderRadius.only(

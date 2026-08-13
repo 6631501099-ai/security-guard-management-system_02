@@ -410,10 +410,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           children: [
             Container(
               width: double.infinity,
-              // Reduced bottom padding (was 40) now that the contact-info
-              // card below no longer overlaps up into this box — the old
-              // padding was sized to leave room for that overlap.
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              // Standardized header padding — see GuardTheme.headerPadding
+              // doc comment for why this must match every other screen.
+              padding: GuardTheme.headerPadding,
               decoration: const BoxDecoration(
                 color: GuardTheme.primaryRed,
                 borderRadius: BorderRadius.only(
@@ -426,7 +425,12 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        // This screen is reached via `pushReplacement`
+                        // from the bottom nav (it's the "โปรไฟล์" tab),
+                        // so there's no previous route to pop back to —
+                        // `Navigator.maybePop()` here was a silent no-op.
+                        // Go to Home explicitly instead.
+                        onPressed: () => navigateToTab(context, 0),
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
                       ),
                       const Expanded(
@@ -527,19 +531,6 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Column(
                   children: [
-                    // NOTE: this card used to be wrapped in
-                    // `Transform.translate(offset: Offset(0, -24))` to make
-                    // it visually float up over the red header's rounded
-                    // bottom edge. That looked fine on paper, but this
-                    // Column sits inside a SingleChildScrollView, whose
-                    // Viewport clips any content painted above its own top
-                    // edge — so the translated-up portion (the icon row,
-                    // which is what a -24 offset moves into negative
-                    // territory) was silently clipped away instead of
-                    // showing over the header, which is exactly the "red
-                    // bar covers the icons" bug. Removing the overlap
-                    // trick and just giving it normal top spacing fixes
-                    // this cleanly and keeps the card fully visible.
                     Container(
                       margin: const EdgeInsets.only(top: 16),
                       padding: const EdgeInsets.symmetric(vertical: 16),
