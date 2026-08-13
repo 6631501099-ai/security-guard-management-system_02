@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../Guard/guard_bottom_nav.dart';
-import '../Guard/guard_nav_helper.dart';
 import '../Guard/guard_theme.dart';
 import '../Guard/guard_bottom_nav.dart';
 import '../Admin/admin_nav_helper.dart';
@@ -24,11 +22,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   
   // 0 = ทั้งหมด, 1 = ยังไม่ได้อ่าน, 2 = กลุ่ม
   int _selectedFilter = 0; 
-
-  // This screen is the "แชท" tab (index 3 in GuardBottomNav's 5-tab
-  // layout), reached via `pushReplacement` from navigateToTab — so it
-  // needs its own bottom nav like every other tab screen.
-  final int _navIndex = 3;
 
   @override
   void dispose() {
@@ -70,7 +63,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
-<<<<<<< HEAD
       
       bottomNavigationBar: GuardBottomNav(
         currentIndex: 3,
@@ -78,35 +70,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
         onTap: (i) {
           if (i == 3) return;
           navigateToAdminTab(context, i);
-=======
-      bottomNavigationBar: GuardBottomNav(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          if (i == _navIndex) return;
-          navigateToTab(context, i);
->>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
         },
       ),
     );
   }
 
-<<<<<<< HEAD
   Widget _buildHeaderBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-=======
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: GuardTheme.headerPadding,
-      decoration: const BoxDecoration(
-        color: GuardTheme.primaryRed,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
->>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -119,16 +90,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           ),
           IconButton(
-<<<<<<< HEAD
             onPressed: _createGroupChat,
             icon: const Icon(Icons.group_add_rounded, color: Color(0xFF800000), size: 26),
             tooltip: 'สร้างแชทกลุ่ม',
-=======
-            // Reached via `pushReplacement` (it's a bottom-nav tab), so
-            // there's no previous route to pop to — go Home explicitly.
-            onPressed: () => navigateToTab(context, 0),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
->>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
           ),
         ],
       ),
@@ -233,7 +197,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       stream: _service.watchMyThreads(),
       builder: (context, threadSnap) {
         final threads = threadSnap.data ?? const <ChatThread>[];
-        final threadOtherUids = threads.map((t) => t.otherUid(uid)).toSet();
 
         return StreamBuilder<List<ChatUser>>(
           stream: _service.watchContacts(),
@@ -254,9 +217,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
               return true;
             }).toList();
 
+            final existing1On1OtherUids = threads
+                .where((t) => !t.isGroup)
+                .map((t) => t.otherUid(uid))
+                .toSet();
+
             final newContacts = contacts.where((c) {
               if (_selectedFilter == 1 || _selectedFilter == 2) return false;
-              if (threadOtherUids.contains(c.uid)) return false;
+              if (existing1On1OtherUids.contains(c.uid)) return false;
               if (_query.isEmpty) return true;
               return c.name.toLowerCase().contains(_query.toLowerCase());
             }).toList();
@@ -284,10 +252,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
               children: [
                 ...filteredThreads.map((t) => _threadTile(t, uid)),
                 if (newContacts.isNotEmpty) ...[
-                  //const Padding(
-                  // padding: EdgeInsets.fromLTRB(6, 16, 6, 8),
-                  //  child: Text('เริ่มแชทใหม่', style: GuardTheme.sectionTitle),
-                  //),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(6, 16, 6, 8),
+                    child: Text('เริ่มแชทใหม่', style: GuardTheme.sectionTitle),
+                  ),
                   ...newContacts.map(_contactTile),
                 ],
               ],
@@ -401,7 +369,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return '${dt.day}/${dt.month}';
   }
 
-  // ฟังก์ชันลบแชทกลุ่ม
   Future<void> _confirmDeleteGroup(String chatId, String groupName) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -444,7 +411,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  // ฟังก์ชันสร้างกลุ่มใหม่
   Future<void> _createGroupChat() async {
     final groupNameController = TextEditingController();
     final Set<String> selectedMemberUids = {};
@@ -516,21 +482,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   final myUid = _service.myUid;
                   if (myUid == null) return;
 
+                  final allMembers = [...selectedMemberUids, myUid];
+
                   await FirebaseFirestore.instance.collection('chats').add({
                     'type': 'group',
                     'isGroup': true,
                     'name': groupName,
-                    'members': [...selectedMemberUids, myUid],
-                    'participants': [...selectedMemberUids, myUid],
+                    'participants': allMembers,
+                    'members': allMembers,
                     'createdBy': myUid,
                     'lastMessage': 'สร้างกลุ่มแล้ว',
                     'lastMessageTime': FieldValue.serverTimestamp(),
+                    'lastSenderId': myUid,
                     'createdAt': FieldValue.serverTimestamp(),
                   });
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("สร้างกลุ่ม '$groupName' เรียบร้อยแล้ว")),
+                      SnackBar(
+                        backgroundColor: const Color(0xFF800000),
+                        content: Text("สร้างกลุ่ม '$groupName' เรียบร้อยแล้ว"),
+                      ),
                     );
                   }
                 },

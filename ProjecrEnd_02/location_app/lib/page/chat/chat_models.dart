@@ -1,13 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// One entry in the "people you can chat with" list — backed by a
-/// `users/{uid}` document (see GuardLocationService's doc comment for the
-/// full schema this app already uses).
 class ChatUser {
   final String uid;
   final String name;
   final String? photoUrl;
-  final String role; // 'guard' | 'admin'
+  final String role;
 
   const ChatUser({
     required this.uid,
@@ -29,27 +26,10 @@ class ChatUser {
   }
 }
 
-/// One row in the `chats` collection: a 1:1 conversation between two
-<<<<<<< HEAD
-/// `users/{uid}` accounts OR a group chat.
-=======
-/// `users/{uid}` accounts. Document id is the two uids sorted and joined
-/// with `_` so the same pair always resolves to the same chat.
-///
-///   chats/{chatId}:
-///     participants: [uidA, uidB]
-///     participantNames: {uid: name}
-///     participantPhotos: {uid: url?}
-///     lastMessage, lastMessageTime, lastSenderId
-///     unread_{uid}: number of unread messages for that participant
-///
-///   chats/{chatId}/messages/{messageId}:
-///     senderId, text, imageUrl?, timestamp
->>>>>>> 4cd5b6a554ff105a80dea95c49e02f138f27b203
 class ChatThread {
   final String id;
   final bool isGroup;
-  final String name; // 👈 เพิ่มประกาศ field name ตรงนี้
+  final String name;
   final List<String> participants;
   final Map<String, String> participantNames;
   final Map<String, String?> participantPhotos;
@@ -61,7 +41,7 @@ class ChatThread {
   const ChatThread({
     required this.id,
     this.isGroup = false,
-    this.name = '', // 👈 แก้ไข syntax constructor ตรงนี้
+    this.name = '',
     required this.participants,
     required this.participantNames,
     required this.participantPhotos,
@@ -77,14 +57,12 @@ class ChatThread {
   ) {
     final data = doc.data() ?? const {};
     final ts = data['lastMessageTime'] as Timestamp?;
-    
-    // ดึงสมาชิกไม่ว่าจะเก็บในฟิลด์ members (แชทกลุ่ม) หรือ participants (แชทเดี่ยว)
     final membersList = List<String>.from(data['members'] ?? data['participants'] ?? const []);
 
     return ChatThread(
       id: doc.id,
       isGroup: data['isGroup'] == true || data['type'] == 'group',
-      name: (data['name'] as String?) ?? '', // 👈 อ่านค่าชื่อกลุ่มจาก Firestore
+      name: (data['name'] as String?) ?? '',
       participants: membersList,
       participantNames: Map<String, String>.from(
         data['participantNames'] ?? const {},
@@ -99,7 +77,6 @@ class ChatThread {
     );
   }
 
-  /// The other participant's uid in this 1:1 chat.
   String otherUid(String myUid) =>
       participants.firstWhere((u) => u != myUid, orElse: () => myUid);
 
@@ -120,8 +97,8 @@ class ChatMessage {
     required this.id,
     required this.senderId,
     required this.text,
-    required this.timestamp,
     this.imageUrl,
+    required this.timestamp,
   });
 
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;

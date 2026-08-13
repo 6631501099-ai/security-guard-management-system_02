@@ -6,44 +6,35 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'chat_models.dart';
 
-/// Firestore-backed 1:1 chat between any two `users/{uid}` accounts
-/// (guard <-> admin, guard <-> guard, etc). See chat_models.dart for the
-/// exact document shape. Deliberately self-contained so it doesn't touch
-/// any of the existing services/screens.
 class ChatService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String? get myUid => FirebaseAuth.instance.currentUser?.uid;
 
-  /// Deterministic chat id for a pair of uids, independent of order.
   String chatIdFor(String uidA, String uidB) {
     final sorted = [uidA, uidB]..sort();
     return '${sorted[0]}_${sorted[1]}';
   }
 
-  /// All chat threads the current user is part of, newest first.
   Stream<List<ChatThread>> watchMyThreads() {
-  final uid = myUid;
-  if (uid == null) return Stream.value([]);
+    final uid = myUid;
+    if (uid == null) return Stream.value([]);
 
-  return FirebaseFirestore.instance
-      .collection('chats')
-      .where('members', arrayContains: uid) // 👈 เปลี่ยน/เพิ่มให้ค้นหาจาก members ด้วย
-      .snapshots()
-      .map((snap) {
-        final list = snap.docs.map((d) => ChatThread.fromDoc(d, uid)).toList();
-        list.sort((a, b) {
-          final at = a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bt = b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return bt.compareTo(at);
-        });
-        return list;
+    return _db
+        .collection('chats')
+        .where('participants', arrayContains: uid)
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs.map((d) => ChatThread.fromDoc(d, uid)).toList();
+      list.sort((a, b) {
+        final at = a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bt = b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bt.compareTo(at);
       });
-}
+      return list;
+    });
+  }
 
-  /// People the current user can start a chat with: everyone in `users`
-  /// except themselves (guards can message admins/other guards and
-  /// vice-versa — the mockups show both roles using the same chat UI).
   Stream<List<ChatUser>> watchContacts() {
     final uid = myUid;
     if (uid == null) return const Stream.empty();
@@ -55,7 +46,6 @@ class ChatService {
         );
   }
 
-  /// Makes sure a chat document exists for (me, other) and returns its id.
   Future<String> openOrCreateChat(ChatUser other) async {
     final uid = myUid;
     if (uid == null) throw StateError('ไม่ได้เข้าสู่ระบบ');
@@ -75,6 +65,7 @@ class ChatService {
 
       await ref.set({
         'participants': [uid, other.uid],
+        'members': [uid, other.uid],
         'participantNames': {uid: myName, other.uid: other.name},
         'participantPhotos': {uid: myPhoto, other.uid: other.photoUrl},
         'lastMessage': '',
@@ -87,7 +78,6 @@ class ChatService {
     return id;
   }
 
-  /// Messages in a chat, oldest first (ready to feed a bottom-anchored list).
   Stream<List<ChatMessage>> watchMessages(String chatId) {
     return _db
         .collection('chats')
@@ -113,19 +103,20 @@ class ChatService {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    await chatRef.set({
+    final updateData = <String, dynamic>{
       'lastMessage': text.trim(),
       'lastMessageTime': FieldValue.serverTimestamp(),
       'lastSenderId': uid,
-      'unread_$otherUid': FieldValue.increment(1),
       'unread_$uid': 0,
-    }, SetOptions(merge: true));
+    };
+
+    if (otherUid.isNotEmpty) {
+      updateData['unread_$otherUid'] = FieldValue.increment(1);
+    }
+
+    await chatRef.set(updateData, SetOptions(merge: true));
   }
 
-  /// Uploads [imageFile] to Storage under `chat_images/{chatId}/...` and
-  /// writes an image message (optionally with a short [caption]). Mirrors
-  /// the upload pattern already used for incident-report photos and
-  /// profile photos elsewhere in the app.
   Future<void> sendImageMessage({
     required String chatId,
     required String otherUid,
@@ -152,19 +143,20 @@ class ChatService {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    await chatRef.set({
-      // Image-only messages still need a non-empty preview string so the
-      // thread list in ChatListScreen shows something meaningful instead
-      // of a blank line.
+    final updateData = <String, dynamic>{
       'lastMessage': caption.trim().isNotEmpty ? caption.trim() : '[รูปภาพ]',
       'lastMessageTime': FieldValue.serverTimestamp(),
       'lastSenderId': uid,
-      'unread_$otherUid': FieldValue.increment(1),
       'unread_$uid': 0,
-    }, SetOptions(merge: true));
+    };
+
+    if (otherUid.isNotEmpty) {
+      updateData['unread_$otherUid'] = FieldValue.increment(1);
+    }
+
+    await chatRef.set(updateData, SetOptions(merge: true));
   }
 
-  /// Call when opening a thread so the badge clears for the current user.
   Future<void> markRead(String chatId) async {
     final uid = myUid;
     if (uid == null) return;

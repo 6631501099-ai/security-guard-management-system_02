@@ -7,10 +7,7 @@ import '../Guard/guard_theme.dart';
 import 'chat_models.dart';
 import 'chat_service.dart';
 
-/// One-on-one conversation screen ("chatv2" mockup): red header with the
-/// other person's avatar/name, bubble list (mine = maroon/right, theirs =
-/// white/left), and a rounded input bar with an attach button + send
-/// button. Supports plain text and image messages.
+/// One-on-one and Group conversation detail screen.
 class ChatDetailScreen extends StatefulWidget {
   final String chatId;
   final String otherUid;
@@ -195,9 +192,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Row(
         children: [
           IconButton(
-            // Correctly poppable: this screen is opened via
-            // `Navigator.push` from ChatListScreen, so there IS a
-            // previous route to return to here (unlike the tab screens).
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
@@ -253,6 +247,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // แสดงรูปภาพในกล่องข้อความ
             if (m.hasImage)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -279,7 +274,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ),
               ),
-            if (m.text.isNotEmpty)
+            if (m.text.isNotEmpty && m.text != '[รูปภาพ]')
               Padding(
                 padding: EdgeInsets.only(top: m.hasImage ? 6 : 0, left: m.hasImage ? 6 : 0),
                 child: Text(
@@ -339,6 +334,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       child: Row(
         children: [
+          // ปุ่มไอคอนรูปภาพส่งรูปในแชท
           IconButton(
             onPressed: _sendingImage ? null : _sendImage,
             icon: _sendingImage
