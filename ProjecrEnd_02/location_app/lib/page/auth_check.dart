@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'admin/admin_dashboard_screen.dart';
+import 'admin/admin_home_screen.dart';
 import 'login_page.dart';
 import 'Guard/guard_dashboard_screen.dart';
 
@@ -65,8 +65,10 @@ class RoleCheck extends StatelessWidget {
         final role = data?['role'] ?? 'guard';
 
         if (role == "admin") {
-          return const AdminDashboard();
-        }
+  return const AdminHomeScreen();
+}
+      
+        
 
         final guardName = data?['name'] as String? ?? "เจ้าหน้าที่";
 

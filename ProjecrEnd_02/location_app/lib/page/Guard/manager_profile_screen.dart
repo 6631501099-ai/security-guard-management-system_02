@@ -14,7 +14,8 @@ class ManagerProfileScreen extends StatefulWidget {
   final String? email;
   final String? phone;
   final String badgeId;
-  final VoidCallback? onLogout;
+ final VoidCallback? onLogout;
+final void Function(BuildContext, int)? onNavTap;
 
   const ManagerProfileScreen({
     super.key,
@@ -23,6 +24,7 @@ class ManagerProfileScreen extends StatefulWidget {
     this.phone,
     this.badgeId = "-",
     this.onLogout,
+this.onNavTap,
   });
 
   @override
@@ -600,13 +602,13 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: GuardBottomNav(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          if (i == _navIndex) return;
-          navigateToTab(context, i);
-        },
-      ),
+     bottomNavigationBar: GuardBottomNav(
+  currentIndex: _navIndex,
+  onTap: (i) {
+    if (i == _navIndex) return;
+    (widget.onNavTap ?? navigateToTab)(context, i); // ✅ เติม widget. ด้านหน้า
+  },
+),
     );
   }
 

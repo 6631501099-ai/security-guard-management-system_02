@@ -30,20 +30,11 @@ class ChatUser {
 }
 
 /// One row in the `chats` collection: a 1:1 conversation between two
-/// `users/{uid}` accounts. Document id is the two uids sorted and joined
-/// with `_` so the same pair always resolves to the same chat.
-///
-///   chats/{chatId}:
-///     participants: [uidA, uidB]
-///     participantNames: {uid: name}
-///     participantPhotos: {uid: url?}
-///     lastMessage, lastMessageTime, lastSenderId
-///     unread_{uid}: number of unread messages for that participant
-///
-///   chats/{chatId}/messages/{messageId}:
-///     senderId, text, timestamp
+/// `users/{uid}` accounts OR a group chat.
 class ChatThread {
   final String id;
+  final bool isGroup;
+  final String name; // 👈 เพิ่มประกาศ field name ตรงนี้
   final List<String> participants;
   final Map<String, String> participantNames;
   final Map<String, String?> participantPhotos;
@@ -54,6 +45,8 @@ class ChatThread {
 
   const ChatThread({
     required this.id,
+    this.isGroup = false,
+    this.name = '', // 👈 แก้ไข syntax constructor ตรงนี้
     required this.participants,
     required this.participantNames,
     required this.participantPhotos,
@@ -69,9 +62,15 @@ class ChatThread {
   ) {
     final data = doc.data() ?? const {};
     final ts = data['lastMessageTime'] as Timestamp?;
+    
+    // ดึงสมาชิกไม่ว่าจะเก็บในฟิลด์ members (แชทกลุ่ม) หรือ participants (แชทเดี่ยว)
+    final membersList = List<String>.from(data['members'] ?? data['participants'] ?? const []);
+
     return ChatThread(
       id: doc.id,
-      participants: List<String>.from(data['participants'] ?? const []),
+      isGroup: data['isGroup'] == true || data['type'] == 'group',
+      name: (data['name'] as String?) ?? '', // 👈 อ่านค่าชื่อกลุ่มจาก Firestore
+      participants: membersList,
       participantNames: Map<String, String>.from(
         data['participantNames'] ?? const {},
       ),

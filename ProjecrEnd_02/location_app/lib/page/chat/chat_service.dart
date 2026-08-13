@@ -20,15 +20,23 @@ class ChatService {
 
   /// All chat threads the current user is part of, newest first.
   Stream<List<ChatThread>> watchMyThreads() {
-    final uid = myUid;
-    if (uid == null) return const Stream.empty();
-    return _db
-        .collection('chats')
-        .where('participants', arrayContains: uid)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => ChatThread.fromDoc(d, uid)).toList());
-  }
+  final uid = myUid;
+  if (uid == null) return Stream.value([]);
+
+  return FirebaseFirestore.instance
+      .collection('chats')
+      .where('members', arrayContains: uid) // 👈 เปลี่ยน/เพิ่มให้ค้นหาจาก members ด้วย
+      .snapshots()
+      .map((snap) {
+        final list = snap.docs.map((d) => ChatThread.fromDoc(d, uid)).toList();
+        list.sort((a, b) {
+          final at = a.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bt = b.lastMessageTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bt.compareTo(at);
+        });
+        return list;
+      });
+}
 
   /// People the current user can start a chat with: everyone in `users`
   /// except themselves (guards can message admins/other guards and

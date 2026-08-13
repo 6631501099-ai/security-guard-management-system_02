@@ -181,82 +181,222 @@ class _AdminScheduleSectionState extends State<AdminScheduleSection> {
     final endController = TextEditingController();
     final noteController = TextEditingController();
 
-    final confirmed = await showDialog<bool>(
+    // ตัวแปรสำหรับเก็บการทำซ้ำกะงาน
+    bool repeatEnable = false;
+    bool repeatEveryday = false;
+    int repeatWeeks = 1; // สั่งซ้ำล่วงหน้ากี่สัปดาห์ (ค่าเริ่มต้น 1 สัปดาห์)
+    
+    // เก็บรายการวันที่ต้องการทำซ้ำ (1 = จันทร์, 7 = อาทิตย์ ตาม DateTime.weekday)
+    final Set<int> selectedDays = {_selectedDay.weekday};
+
+    final daysMap = {
+      1: 'จ.',
+      2: 'อ.',
+      3: 'พ.',
+      4: 'พฤ.',
+      5: 'ศ.',
+      6: 'ส.',
+      7: 'อา.',
+    };
+
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text("เพิ่มกะงาน"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: labelController,
-                decoration:
-                    const InputDecoration(labelText: "ชื่อกะ (เช่น กะ S1)"),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text("เพิ่มกะงาน"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: labelController,
+                    decoration:
+                        const InputDecoration(labelText: "ชื่อกะ (เช่น กะ S1)"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: startController,
+                    decoration:
+                        const InputDecoration(labelText: "เวลาเริ่ม (เช่น 08:00)"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: endController,
+                    decoration: const InputDecoration(
+                        labelText: "เวลาสิ้นสุด (เช่น 16:00)"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: noteController,
+                    decoration:
+                        const InputDecoration(labelText: "หมายเหตุ (ไม่บังคับ)"),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // --- ส่วนฟังก์ชันสั่งซ้ำ ---
+                  const Divider(),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("ตั้งค่าสั่งซ้ำ (Repeat)",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    value: repeatEnable,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        repeatEnable = val;
+                      });
+                    },
+                  ),
+
+                  if (repeatEnable) ...[
+                    // ตัวเลือกสั่งซ้ำทุกวัน
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("สั่งซ้ำทุกวัน", style: TextStyle(fontSize: 13)),
+                      value: repeatEveryday,
+                      onChanged: (val) {
+                        setDialogState(() {
+                          repeatEveryday = val ?? false;
+                          if (repeatEveryday) {
+                            selectedDays.addAll([1, 2, 3, 4, 5, 6, 7]);
+                          } else {
+                            selectedDays.clear();
+                            selectedDays.add(_selectedDay.weekday);
+                          }
+                        });
+                      },
+                    ),
+
+                    // ตัวเลือกติ๊กวันในสัปดาห์ (จ. - อา.)
+                    if (!repeatEveryday) ...[
+                      const Text("เลือกวันที่ต้องการซ้ำในสัปดาห์:",
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: daysMap.entries.map((entry) {
+                          final isSelected = selectedDays.contains(entry.key);
+                          return FilterChip(
+                            label: Text(entry.value, style: const TextStyle(fontSize: 12)),
+                            selected: isSelected,
+                            selectedColor: AppColors.primaryDark.withOpacity(0.2),
+                            onSelected: (bool selected) {
+                              setDialogState(() {
+                                if (selected) {
+                                  selectedDays.add(entry.key);
+                                } else {
+                                  if (selectedDays.length > 1) {
+                                    selectedDays.remove(entry.key);
+                                  }
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+
+                    const SizedBox(height: 10),
+                    // ระยะเวลาที่ต้องการสร้างกะงานล่วงหน้า
+                    Row(
+                      children: [
+                        const Text("สร้างกะล่วงหน้า: ", style: TextStyle(fontSize: 12)),
+                        DropdownButton<int>(
+                          value: repeatWeeks,
+                          isDense: true,
+                          items: const [
+                            DropdownMenuItem(value: 1, child: Text("1 สัปดาห์")),
+                            DropdownMenuItem(value: 2, child: Text("2 สัปดาห์")),
+                            DropdownMenuItem(value: 4, child: Text("1 เดือน (4 สัปดาห์)")),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => repeatWeeks = val);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: startController,
-                decoration:
-                    const InputDecoration(labelText: "เวลาเริ่ม (เช่น 08:00)"),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(null),
+                child: const Text("ยกเลิก"),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: endController,
-                decoration: const InputDecoration(
-                    labelText: "เวลาสิ้นสุด (เช่น 16:00)"),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: noteController,
-                decoration:
-                    const InputDecoration(labelText: "หมายเหตุ (ไม่บังคับ)"),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop({'confirmed': true}),
+                child: const Text("บันทึก"),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text("ยกเลิก"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text("บันทึก"),
-          ),
-        ],
+          );
+        },
       ),
     );
 
-    if (confirmed != true) return;
+    if (result == null || result['confirmed'] != true) return;
     if (_guardUid == null || labelController.text.trim().isEmpty) return;
 
     final firestore = FirebaseFirestore.instance;
-    await firestore.collection('schedules').add({
-      'guardUid': _guardUid,
-      'guardName': _guardName ?? '',
-      'date': dateKey(_selectedDay),
-      'label': labelController.text.trim(),
-      'startTime': startController.text.trim(),
-      'endTime': endController.text.trim(),
-      'note': noteController.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final batch = firestore.batch();
 
-    await firestore.collection('notifications').add({
+    // คำนวณวันที่ต้องสร้างกะทั้งหมด
+    List<DateTime> targetDates = [];
+
+    if (!repeatEnable) {
+      targetDates.add(_selectedDay);
+    } else {
+      // หากเลือกสั่งซ้ำ ให้คำนวณตั้งแต่วันที่เลือก ยิงยาวไปตามจำนวนสัปดาห์
+      final totalDaysToCalculate = repeatWeeks * 7;
+      for (int i = 0; i < totalDaysToCalculate; i++) {
+        final checkDate = _selectedDay.add(Duration(days: i));
+        if (selectedDays.contains(checkDate.weekday)) {
+          targetDates.add(checkDate);
+        }
+      }
+    }
+
+    // วนลูปสร้างเอกสารลง Firestore
+    for (final date in targetDates) {
+      final docRef = firestore.collection('schedules').doc();
+      batch.set(docRef, {
+        'guardUid': _guardUid,
+        'guardName': _guardName ?? '',
+        'date': dateKey(date),
+        'label': labelController.text.trim(),
+        'startTime': startController.text.trim(),
+        'endTime': endController.text.trim(),
+        'note': noteController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // ส่งการแจ้งเตือน
+    final notiRef = firestore.collection('notifications').doc();
+    batch.set(notiRef, {
       'targetUid': _guardUid,
       'title': 'ตารางเวรมีการอัปเดต',
-      'subtitle':
-          '${labelController.text.trim()} วันที่ ${_selectedDay.day}/${_selectedDay.month}',
+      'subtitle': repeatEnable
+          ? 'มีการเพิ่มกะงานใหม่ (${targetDates.length} วัน)'
+          : '${labelController.text.trim()} วันที่ ${_selectedDay.day}/${_selectedDay.month}',
       'category': 'notice',
       'timestamp': FieldValue.serverTimestamp(),
     });
 
+    // ยืนยันการบันทึกข้อมูลทั้งหมดลง Firestore
+    await batch.commit();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: AppColors.success,
-          content: Text("เพิ่มกะงานแล้ว"),
+          content: Text(repeatEnable
+              ? "เพิ่มกะงานสั่งซ้ำเรียบร้อยแล้ว (${targetDates.length} วัน)"
+              : "เพิ่มกะงานแล้ว"),
         ),
       );
     }
