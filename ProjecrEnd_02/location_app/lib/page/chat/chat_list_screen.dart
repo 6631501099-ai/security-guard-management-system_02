@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../Guard/guard_bottom_nav.dart';
+import '../Guard/guard_nav_helper.dart';
 import '../Guard/guard_theme.dart';
 import 'chat_detail_screen.dart';
 import 'chat_models.dart';
@@ -19,6 +21,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _service = ChatService();
   final TextEditingController _search = TextEditingController();
   String _query = '';
+
+  // This screen is the "แชท" tab (index 3 in GuardBottomNav's 5-tab
+  // layout), reached via `pushReplacement` from navigateToTab — so it
+  // needs its own bottom nav like every other tab screen.
+  final int _navIndex = 3;
 
   @override
   void dispose() {
@@ -59,13 +66,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: GuardBottomNav(
+        currentIndex: _navIndex,
+        onTap: (i) {
+          if (i == _navIndex) return;
+          navigateToTab(context, i);
+        },
+      ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 12, 20, 22),
+      padding: GuardTheme.headerPadding,
       decoration: const BoxDecoration(
         color: GuardTheme.primaryRed,
         borderRadius: BorderRadius.only(
@@ -76,7 +90,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            // Reached via `pushReplacement` (it's a bottom-nav tab), so
+            // there's no previous route to pop to — go Home explicitly.
+            onPressed: () => navigateToTab(context, 0),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Text('แชท', style: GuardTheme.screenTitle),

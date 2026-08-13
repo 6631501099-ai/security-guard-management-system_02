@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../Guard/guard_theme.dart';
 import 'chat_models.dart';
@@ -6,7 +9,8 @@ import 'chat_service.dart';
 
 /// One-on-one conversation screen ("chatv2" mockup): red header with the
 /// other person's avatar/name, bubble list (mine = maroon/right, theirs =
-/// white/left), and a rounded input bar with a send button.
+/// white/left), and a rounded input bar with an attach button + send
+/// button. Supports plain text and image messages.
 class ChatDetailScreen extends StatefulWidget {
   final String chatId;
   final String otherUid;
@@ -27,9 +31,11 @@ class ChatDetailScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _service = ChatService();
+  final ImagePicker _picker = ImagePicker();
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
   bool _sending = false;
+  bool _sendingImage = false;
 
   @override
   void initState() {
@@ -58,6 +64,65 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       _scrollToBottom();
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<ImageSource?> _chooseSource() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text("ถ่ายภาพใหม่"),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text("เลือกจากคลังภาพ"),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendImage() async {
+    if (_sendingImage) return;
+    final source = await _chooseSource();
+    if (source == null) return;
+
+    XFile? picked;
+    try {
+      picked = await _picker.pickImage(source: source, imageQuality: 80);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("เปิดกล้อง/คลังภาพไม่ได้: $e")),
+        );
+      }
+      return;
+    }
+    if (picked == null) return;
+
+    setState(() => _sendingImage = true);
+    try {
+      await _service.sendImageMessage(
+        chatId: widget.chatId,
+        otherUid: widget.otherUid,
+        imageFile: File(picked.path),
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("ส่งรูปไม่สำเร็จ: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sendingImage = false);
     }
   }
 
@@ -119,7 +184,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(4, 12, 20, 18),
+      padding: GuardTheme.headerPadding,
       decoration: const BoxDecoration(
         color: GuardTheme.primaryRed,
         borderRadius: BorderRadius.only(
@@ -130,6 +195,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Row(
         children: [
           IconButton(
+            // Correctly poppable: this screen is opened via
+            // `Navigator.push` from ChatListScreen, so there IS a
+            // previous route to return to here (unlike the tab screens).
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
@@ -168,7 +236,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: m.hasImage
+            ? const EdgeInsets.all(6)
+            : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isMe ? GuardTheme.primaryRed : Colors.white,
           borderRadius: BorderRadius.only(
@@ -183,19 +253,55 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              m.text,
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black87,
-                fontSize: 14,
+            if (m.hasImage)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: GestureDetector(
+                  onTap: () => _openImagePreview(m.imageUrl!),
+                  child: Image.network(
+                    m.imageUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const SizedBox(
+                        width: 160,
+                        height: 160,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) => const SizedBox(
+                      width: 160,
+                      height: 120,
+                      child: Center(child: Icon(Icons.broken_image_outlined)),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              time,
-              style: TextStyle(
-                fontSize: 10,
-                color: isMe ? Colors.white70 : GuardTheme.textGrey,
+            if (m.text.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: m.hasImage ? 6 : 0, left: m.hasImage ? 6 : 0),
+                child: Text(
+                  m.text,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : Colors.black87,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            Padding(
+              padding: EdgeInsets.only(
+                top: 4,
+                right: m.hasImage ? 6 : 0,
+                left: m.hasImage ? 6 : 0,
+              ),
+              child: Text(
+                time,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe ? Colors.white70 : GuardTheme.textGrey,
+                ),
               ),
             ),
           ],
@@ -204,10 +310,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _openImagePreview(String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(12),
+        child: InteractiveViewer(
+          child: Image.network(url),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputBar() {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomInset),
+      padding: EdgeInsets.fromLTRB(8, 10, 12, 10 + bottomInset),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -220,6 +339,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       child: Row(
         children: [
+          IconButton(
+            onPressed: _sendingImage ? null : _sendImage,
+            icon: _sendingImage
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.image_outlined, color: GuardTheme.primaryRed),
+            tooltip: 'ส่งรูปภาพ',
+          ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(

@@ -41,7 +41,7 @@ class ChatUser {
 ///     unread_{uid}: number of unread messages for that participant
 ///
 ///   chats/{chatId}/messages/{messageId}:
-///     senderId, text, timestamp
+///     senderId, text, imageUrl?, timestamp
 class ChatThread {
   final String id;
   final List<String> participants;
@@ -99,6 +99,7 @@ class ChatMessage {
   final String id;
   final String senderId;
   final String text;
+  final String? imageUrl;
   final DateTime? timestamp;
 
   const ChatMessage({
@@ -106,7 +107,10 @@ class ChatMessage {
     required this.senderId,
     required this.text,
     required this.timestamp,
+    this.imageUrl,
   });
+
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 
   factory ChatMessage.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
@@ -115,6 +119,7 @@ class ChatMessage {
       id: doc.id,
       senderId: (data['senderId'] as String?) ?? '',
       text: (data['text'] as String?) ?? '',
+      imageUrl: data['imageUrl'] as String?,
       timestamp: ts?.toDate(),
     );
   }
