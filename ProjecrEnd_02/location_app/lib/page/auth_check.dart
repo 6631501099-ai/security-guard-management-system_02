@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'admin/admin_home_screen.dart';
 import 'login_page.dart';
 import 'Guard/guard_dashboard_screen.dart';
@@ -8,6 +9,40 @@ import 'Guard/guard_dashboard_screen.dart';
 ////////////////////////////////////////////////////////////
 /// AUTH CHECK
 ////////////////////////////////////////////////////////////
+
+class RoleGuard {
+  static bool isAdminRole(dynamic roleValue) {
+    final normalized = (roleValue ?? 'guard').toString().trim().toLowerCase();
+    return normalized == 'admin' ||
+        normalized == 'super_admin' ||
+        normalized == 'manager';
+  }
+
+  static Future<String> getCurrentRole() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 'guard';
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = doc.data() ?? const <String, dynamic>{};
+    return (data['role'] ?? 'guard').toString().trim().toLowerCase();
+  }
+
+  static Future<void> redirectToRoleHome(BuildContext context) async {
+    final role = await getCurrentRole();
+    final target = isAdminRole(role)
+        ? const AdminHomeScreen()
+        : const GuardDashboardScreen();
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => target),
+      (route) => false,
+    );
+  }
+}
 
 class AuthCheck extends StatelessWidget {
   const AuthCheck({super.key});
@@ -48,7 +83,7 @@ class RoleCheck extends StatelessWidget {
       return const LoginPage();
     }
 
-    return FutureBuilder<DocumentSnapshot>(
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       future: FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -60,18 +95,14 @@ class RoleCheck extends StatelessWidget {
           );
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>?;
+        final data = snapshot.data!.data() ?? const <String, dynamic>{};
+        final role = data['role'] ?? 'guard';
 
-        final role = data?['role'] ?? 'guard';
+        if (RoleGuard.isAdminRole(role)) {
+          return const AdminHomeScreen();
+        }
 
-        if (role == "admin") {
-  return const AdminHomeScreen();
-}
-      
-        
-
-        final guardName = data?['name'] as String? ?? "เจ้าหน้าที่";
-
+        final guardName = (data['name'] as String?) ?? 'เจ้าหน้าที่';
         return GuardDashboardScreen(guardName: guardName);
       },
     );

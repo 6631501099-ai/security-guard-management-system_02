@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'auth_check.dart';
@@ -15,15 +17,23 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  Timer? _navTimer;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1800), () {
+    _navTimer = Timer(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const AuthCheck()));
     });
+  }
+
+  @override
+  void dispose() {
+    _navTimer?.cancel();
+    super.dispose();
   }
 
   @override

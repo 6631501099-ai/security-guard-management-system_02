@@ -30,6 +30,7 @@ class ChatThread {
   final String id;
   final bool isGroup;
   final String name;
+  final String createdBy;
   final List<String> participants;
   final Map<String, String> participantNames;
   final Map<String, String?> participantPhotos;
@@ -42,6 +43,7 @@ class ChatThread {
     required this.id,
     this.isGroup = false,
     this.name = '',
+    this.createdBy = '',
     required this.participants,
     required this.participantNames,
     required this.participantPhotos,
@@ -57,12 +59,15 @@ class ChatThread {
   ) {
     final data = doc.data() ?? const {};
     final ts = data['lastMessageTime'] as Timestamp?;
-    final membersList = List<String>.from(data['members'] ?? data['participants'] ?? const []);
+    final membersList = List<String>.from(
+      data['members'] ?? data['participants'] ?? const [],
+    );
 
     return ChatThread(
       id: doc.id,
       isGroup: data['isGroup'] == true || data['type'] == 'group',
       name: (data['name'] as String?) ?? '',
+      createdBy: (data['createdBy'] as String?) ?? '',
       participants: membersList,
       participantNames: Map<String, String>.from(
         data['participantNames'] ?? const {},

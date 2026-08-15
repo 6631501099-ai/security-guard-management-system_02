@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../Guard/guard_theme.dart';
-import '../Guard/guard_bottom_nav.dart';
 import '../Admin/admin_nav_helper.dart';
+import '../Guard/guard_bottom_nav.dart';
+import '../Guard/guard_nav_helper.dart';
+import '../Guard/guard_theme.dart';
+import '../auth_check.dart';
 import 'chat_detail_screen.dart';
 import 'chat_models.dart';
 import 'chat_service.dart';
@@ -19,9 +22,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _service = ChatService();
   final TextEditingController _search = TextEditingController();
   String _query = '';
-  
+  bool _isAdmin = false;
+
+  static bool canAccessThread(
+    ChatThread thread, {
+    required bool isAdmin,
+    required String currentUserUid,
+  }) {
+    if (!isAdmin) return true;
+    if (!thread.isGroup) return false;
+    return thread.createdBy == currentUserUid;
+  }
+
   // 0 = ทั้งหมด, 1 = ยังไม่ได้อ่าน, 2 = กลุ่ม
-  int _selectedFilter = 0; 
+  int _selectedFilter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await RoleGuard.getCurrentRole();
+    if (!mounted) return;
+    setState(() => _isAdmin = RoleGuard.isAdminRole(role));
+  }
 
   @override
   void dispose() {
@@ -29,7 +55,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
     super.dispose();
   }
 
-  void _openThread(String chatId, String otherUid, String otherName, String? otherPhoto) {
+  void _openThread(
+    String chatId,
+    String otherUid,
+    String otherName,
+    String? otherPhoto,
+  ) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChatDetailScreen(
@@ -50,6 +81,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final labels = _isAdmin
+        ? const ["หน้าหลัก", "เจ้าหน้าที่", "แจ้งเตือน", "แชท", "โปรไฟล์"]
+        : const ["หน้าหลัก", "ภารกิจ", "SOS", "แชท", "โปรไฟล์"];
+
     return Scaffold(
       backgroundColor: GuardTheme.scaffoldBg,
       body: SafeArea(
@@ -63,13 +98,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
-      
       bottomNavigationBar: GuardBottomNav(
         currentIndex: 3,
-        labels: const ["หน้าหลัก", "เจ้าหน้าที่", "แจ้งเตือน", "แชท", "โปรไฟล์"],
+        labels: labels,
         onTap: (i) {
           if (i == 3) return;
-          navigateToAdminTab(context, i);
+          if (_isAdmin) {
+            navigateToAdminTab(context, i);
+          } else {
+            navigateToTab(context, i);
+          }
         },
       ),
     );
@@ -91,7 +129,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           IconButton(
             onPressed: _createGroupChat,
-            icon: const Icon(Icons.group_add_rounded, color: Color(0xFF800000), size: 26),
+            icon: const Icon(
+              Icons.group_add_rounded,
+              color: Color(0xFF800000),
+              size: 26,
+            ),
             tooltip: 'สร้างแชทกลุ่ม',
           ),
         ],
@@ -110,7 +152,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
           decoration: const InputDecoration(
             hintText: 'หาเจ้าหน้าที่ด้วยชื่อหรือID',
             hintStyle: TextStyle(color: GuardTheme.textGrey, fontSize: 13),
-            prefixIcon: Icon(Icons.search, color: GuardTheme.textGrey, size: 20),
+            prefixIcon: Icon(
+              Icons.search,
+              color: GuardTheme.textGrey,
+              size: 20,
+            ),
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 12),
           ),
@@ -189,7 +235,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final uid = _service.myUid;
     if (uid == null) {
       return const Center(
-        child: Text('กรุณาเข้าสู่ระบบ', style: TextStyle(color: GuardTheme.textGrey)),
+        child: Text(
+          'กรุณาเข้าสู่ระบบ',
+          style: TextStyle(color: GuardTheme.textGrey),
+        ),
       );
     }
 
@@ -204,6 +253,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
             final contacts = contactSnap.data ?? const <ChatUser>[];
 
             final filteredThreads = threads.where((t) {
+              if (!canAccessThread(t, isAdmin: _isAdmin, currentUserUid: uid)) {
+                return false;
+              }
+
               final titleName = t.isGroup
                   ? (t.name.isNotEmpty ? t.name : 'แชทกลุ่ม')
                   : t.otherName(uid);
@@ -267,7 +320,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _threadTile(ChatThread t, String uid) {
-    final name = t.isGroup ? (t.name.isNotEmpty ? t.name : 'แชทกลุ่ม') : t.otherName(uid);
+    final name = t.isGroup
+        ? (t.name.isNotEmpty ? t.name : 'แชทกลุ่ม')
+        : t.otherName(uid);
     final photo = t.isGroup ? null : t.otherPhoto(uid);
     final unread = t.unreadForMe;
 
@@ -293,7 +348,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
               children: [
                 Text(
                   _timeLabel(t.lastMessageTime),
-                  style: const TextStyle(color: GuardTheme.textGrey, fontSize: 11),
+                  style: const TextStyle(
+                    color: GuardTheme.textGrey,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -311,13 +369,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
             if (t.isGroup) ...[
               const SizedBox(width: 4),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 20,
+                ),
                 onPressed: () => _confirmDeleteGroup(t.id, name),
               ),
             ],
           ],
         ),
-        onTap: () => _openThread(t.id, t.isGroup ? '' : t.otherUid(uid), name, photo),
+        onTap: () =>
+            _openThread(t.id, t.isGroup ? '' : t.otherUid(uid), name, photo),
         onLongPress: t.isGroup ? () => _confirmDeleteGroup(t.id, name) : null,
       ),
     );
@@ -330,12 +393,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         leading: _avatar(user.name, user.photoUrl),
-        title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          user.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Text(
           user.role == 'admin' ? 'ผู้ดูแลระบบ' : 'เจ้าหน้าที่รักษาความปลอดภัย',
           style: const TextStyle(color: GuardTheme.textGrey, fontSize: 12),
         ),
-        trailing: const Icon(Icons.chat_bubble_outline, color: GuardTheme.primaryRed, size: 20),
+        trailing: const Icon(
+          Icons.chat_bubble_outline,
+          color: GuardTheme.primaryRed,
+          size: 20,
+        ),
         onTap: () => _startChatWith(user),
       ),
     );
@@ -348,14 +418,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
       child: photoUrl == null
           ? (isGroup
-              ? const Icon(Icons.group, color: GuardTheme.primaryRed)
-              : Text(
-                  name.isNotEmpty ? name.substring(0, 1) : '?',
-                  style: const TextStyle(
-                    color: GuardTheme.primaryRed,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ))
+                ? const Icon(Icons.group, color: GuardTheme.primaryRed)
+                : Text(
+                    name.isNotEmpty ? name.substring(0, 1) : '?',
+                    style: const TextStyle(
+                      color: GuardTheme.primaryRed,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ))
           : null,
     );
   }
@@ -374,14 +444,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text("ยืนยันการลบกลุ่ม"),
-        content: Text("คุณต้องการลบกลุ่ม '$groupName' ใช่หรือไม่? ข้อความทั้งหมดจะถูกลบ"),
+        content: Text(
+          "คุณต้องการลบกลุ่ม '$groupName' ใช่หรือไม่? ข้อความทั้งหมดจะถูกลบ",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text("ยกเลิก"),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF800000)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF800000),
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text("ลบกลุ่ม", style: TextStyle(color: Colors.white)),
           ),
@@ -434,21 +508,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text("เลือกสมาชิกเข้าร่วมกลุ่ม:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text(
+                    "เลือกสมาชิกเข้าร่วมกลุ่ม:",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
-                  
+
                   StreamBuilder<List<ChatUser>>(
                     stream: _service.watchContacts(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData)
+                        return const Center(child: CircularProgressIndicator());
                       final contacts = snapshot.data ?? [];
                       return Column(
                         children: contacts.map((user) {
-                          final isSelected = selectedMemberUids.contains(user.uid);
+                          final isSelected = selectedMemberUids.contains(
+                            user.uid,
+                          );
                           return CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             value: isSelected,
-                            title: Text(user.name, style: const TextStyle(fontSize: 14)),
+                            title: Text(
+                              user.name,
+                              style: const TextStyle(fontSize: 14),
+                            ),
                             onChanged: (val) {
                               setDialogState(() {
                                 if (val == true) {
@@ -472,7 +555,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 child: const Text("ยกเลิก"),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF800000)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF800000),
+                ),
                 onPressed: () async {
                   final groupName = groupNameController.text.trim();
                   if (groupName.isEmpty || selectedMemberUids.isEmpty) return;

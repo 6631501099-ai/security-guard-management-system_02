@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:location_app/page/chat/chat_list_screen.dart';
+import '../auth_check.dart';
 import 'guard_dashboard_screen.dart';
 import 'guard_tasks_screen.dart';
 import 'sos_emergency_screen.dart';
@@ -11,7 +12,15 @@ import 'manager_profile_screen.dart';
 /// Index mapping (must match GuardBottomNav's labels list exactly):
 ///   0 = หน้าหลัก (Home)   1 = ภารกิจ (Tasks)   2 = SOS (center button)
 ///   3 = แชท (Chat)        4 = โปรไฟล์ (Profile)
-void navigateToTab(BuildContext context, int index) {
+void navigateToTab(BuildContext context, int index) async {
+  final role = await RoleGuard.getCurrentRole();
+  if (RoleGuard.isAdminRole(role)) {
+    if (context.mounted) {
+      await RoleGuard.redirectToRoleHome(context);
+    }
+    return;
+  }
+
   late final Widget target;
   switch (index) {
     case 0:
@@ -36,7 +45,9 @@ void navigateToTab(BuildContext context, int index) {
     default:
       target = const GuardDashboardScreen();
   }
-  Navigator.of(context).pushReplacement(
-    MaterialPageRoute(builder: (_) => target),
-  );
+  if (context.mounted) {
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => target));
+  }
 }

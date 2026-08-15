@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'page/auth_check.dart';
 import 'package:flutter/services.dart';
+
+import 'firebase_options.dart';
 import 'page/splash_screen.dart';
 
 ////////////////////////////////////////////////////////////
@@ -11,8 +11,7 @@ import 'page/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,
-);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
@@ -37,27 +36,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Firebase.apps.isEmpty
-          ? Firebase.initializeApp(
-              options: DefaultFirebaseOptions.currentPlatform,
-            )
-          : Future.value(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
-          );
-        }
-
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: "Security Guard System",
-          theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.red),
-          home: const SplashScreen(),
-        );
-      },
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: "Security Guard System",
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.red),
+      home: const SplashScreen(),
     );
   }
 }

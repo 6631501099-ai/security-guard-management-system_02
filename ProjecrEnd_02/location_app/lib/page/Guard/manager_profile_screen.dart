@@ -14,8 +14,8 @@ class ManagerProfileScreen extends StatefulWidget {
   final String? email;
   final String? phone;
   final String badgeId;
- final VoidCallback? onLogout;
-final void Function(BuildContext, int)? onNavTap;
+  final VoidCallback? onLogout;
+  final void Function(BuildContext, int)? onNavTap;
 
   const ManagerProfileScreen({
     super.key,
@@ -24,7 +24,7 @@ final void Function(BuildContext, int)? onNavTap;
     this.phone,
     this.badgeId = "-",
     this.onLogout,
-this.onNavTap,
+    this.onNavTap,
   });
 
   @override
@@ -35,14 +35,19 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   int _navIndex = 4;
 
   late String _name = widget.name ?? "เจ้าหน้าที่";
-  late String _email = widget.email ?? FirebaseAuth.instance.currentUser?.email ?? "-";
+  late String _email =
+      widget.email ?? FirebaseAuth.instance.currentUser?.email ?? "-";
   late String _phone = widget.phone ?? "-";
   bool _loggingOut = false;
 
   bool _isEditing = false;
   bool _saving = false;
-  late final TextEditingController _nameController = TextEditingController(text: _name);
-  late final TextEditingController _phoneController = TextEditingController(text: _phone);
+  late final TextEditingController _nameController = TextEditingController(
+    text: _name,
+  );
+  late final TextEditingController _phoneController = TextEditingController(
+    text: _phone,
+  );
 
   final ImagePicker _picker = ImagePicker();
   File? _localPhoto;
@@ -66,8 +71,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       final data = doc.data();
       if (!mounted || data == null) return;
       setState(() {
@@ -128,9 +135,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
       // User backed out of the camera/gallery picker — nothing to do,
       // but let them know so it's clear the tap was registered.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("ไม่ได้เลือกรูปภาพ")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("ไม่ได้เลือกรูปภาพ")));
       }
       return;
     }
@@ -149,15 +156,16 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     });
 
     try {
-      final ref =
-          FirebaseStorage.instance.ref().child('profile_photos').child('${user.uid}.jpg');
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('${user.uid}.jpg');
       await ref.putFile(_localPhoto!);
       final url = await ref.getDownloadURL();
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
-        {'photoUrl': url},
-        SetOptions(merge: true),
-      );
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'photoUrl': url,
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
       setState(() {
@@ -173,9 +181,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _uploadingPhoto = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("อัปโหลดรูปไม่สำเร็จ: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("อัปโหลดรูปไม่สำเร็จ: $e")));
     }
   }
 
@@ -194,9 +202,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     final newName = _nameController.text.trim();
     final newPhone = _phoneController.text.trim();
     if (newName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("กรุณากรอกชื่อ")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("กรุณากรอกชื่อ")));
       return;
     }
 
@@ -204,10 +212,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
-          {'name': newName, 'phone': newPhone},
-          SetOptions(merge: true),
-        );
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'name': newName,
+          'phone': newPhone,
+        }, SetOptions(merge: true));
       }
       if (!mounted) return;
       setState(() {
@@ -223,9 +231,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("บันทึกไม่สำเร็จ: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("บันทึกไม่สำเร็จ: $e")));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -234,7 +242,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
   Future<void> _sendPasswordReset() async {
     if (_email == "-" || _email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("ไม่พบอีเมลสำหรับส่งลิงก์เปลี่ยนรหัสผ่าน")),
+        const SnackBar(
+          content: Text("ไม่พบอีเมลสำหรับส่งลิงก์เปลี่ยนรหัสผ่าน"),
+        ),
       );
       return;
     }
@@ -247,9 +257,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("ส่งลิงก์ไม่สำเร็จ: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("ส่งลิงก์ไม่สำเร็จ: $e")));
     }
   }
 
@@ -258,9 +268,7 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("ตั้งค่าความปลอดภัย"),
-        content: Text(
-          "ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่ $_email",
-        ),
+        content: Text("ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่ $_email"),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -378,8 +386,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("ออกจากระบบ",
-                style: TextStyle(color: GuardTheme.primaryRed)),
+            child: const Text(
+              "ออกจากระบบ",
+              style: TextStyle(color: GuardTheme.primaryRed),
+            ),
           ),
         ],
       ),
@@ -398,6 +408,13 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         );
       }
     }
+  }
+
+  void _goHome() {
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthCheck()),
+      (route) => false,
+    );
   }
 
   @override
@@ -425,12 +442,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                   Row(
                     children: [
                       IconButton(
-                        // This screen is reached via `pushReplacement`
-                        // from the bottom nav (it's the "โปรไฟล์" tab),
-                        // so there's no previous route to pop back to —
-                        // `Navigator.maybePop()` here was a silent no-op.
-                        // Go to Home explicitly instead.
-                        onPressed: () => navigateToTab(context, 0),
+                        // Always re-check the live user role before returning
+                        // home. This prevents a guard from landing on the admin
+                        // dashboard if a stale route/state is still in memory.
+                        onPressed: _goHome,
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
                       ),
                       const Expanded(
@@ -442,8 +457,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                       ),
                       IconButton(
                         onPressed: _toggleEditing,
-                        icon: Icon(_isEditing ? Icons.close : Icons.edit,
-                            color: Colors.white),
+                        icon: Icon(
+                          _isEditing ? Icons.close : Icons.edit,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -458,11 +475,14 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                           backgroundImage: _localPhoto != null
                               ? FileImage(_localPhoto!)
                               : (_photoUrl != null
-                                  ? NetworkImage(_photoUrl!) as ImageProvider
-                                  : null),
+                                    ? NetworkImage(_photoUrl!) as ImageProvider
+                                    : null),
                           child: (_localPhoto == null && _photoUrl == null)
-                              ? const Icon(Icons.person,
-                                  size: 46, color: GuardTheme.primaryRed)
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 46,
+                                  color: GuardTheme.primaryRed,
+                                )
                               : null,
                         ),
                         if (_uploadingPhoto)
@@ -490,8 +510,11 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                               color: GuardTheme.primaryRed,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                size: 14, color: Colors.white),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -510,7 +533,9 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -548,20 +573,34 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                     ),
                     if (_isEditing) _buildEditForm(),
                     _menuSection("บัญชีของฉัน", [
-                      _menuItem(Icons.person_outline, "ตั้งค่าบัญชี",
-                          onTap: _toggleEditing),
-                      _menuItem(Icons.shield_outlined, "ตั้งค่าความปลอดภัย",
-                          onTap: _showSecurityDialog),
-                      _menuItem(Icons.notifications_none, "ตั้งค่าการแจ้งเตือน",
-                          onTap: _showNotificationSettings),
+                      _menuItem(
+                        Icons.person_outline,
+                        "ตั้งค่าบัญชี",
+                        onTap: _toggleEditing,
+                      ),
+                      _menuItem(
+                        Icons.shield_outlined,
+                        "ตั้งค่าความปลอดภัย",
+                        onTap: _showSecurityDialog,
+                      ),
+                      _menuItem(
+                        Icons.notifications_none,
+                        "ตั้งค่าการแจ้งเตือน",
+                        onTap: _showNotificationSettings,
+                      ),
                     ]),
                     const SizedBox(height: 18),
                     _menuSection("สนับสนุน", [
-                      _menuItem(Icons.help_outline, "ศูนย์ช่วยเหลือ",
-                          onTap: _showHelpDialog),
-                      _menuItem(Icons.privacy_tip_outlined,
-                          "ข้อกำหนดและนโยบายความเป็นส่วนตัว",
-                          onTap: _showPolicyDialog),
+                      _menuItem(
+                        Icons.help_outline,
+                        "ศูนย์ช่วยเหลือ",
+                        onTap: _showHelpDialog,
+                      ),
+                      _menuItem(
+                        Icons.privacy_tip_outlined,
+                        "ข้อกำหนดและนโยบายความเป็นส่วนตัว",
+                        onTap: _showPolicyDialog,
+                      ),
                     ]),
                     const SizedBox(height: 22),
                     SizedBox(
@@ -580,10 +619,14 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.logout),
-                        label: Text(_loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ"),
+                        label: Text(
+                          _loggingOut ? "กำลังออกจากระบบ..." : "ออกจากระบบ",
+                        ),
                       ),
                     ),
                   ],
@@ -593,13 +636,16 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
           ],
         ),
       ),
-     bottomNavigationBar: GuardBottomNav(
-  currentIndex: _navIndex,
-  onTap: (i) {
-    if (i == _navIndex) return;
-    (widget.onNavTap ?? navigateToTab)(context, i); // ✅ เติม widget. ด้านหน้า
-  },
-),
+      bottomNavigationBar: GuardBottomNav(
+        currentIndex: _navIndex,
+        onTap: (i) {
+          if (i == _navIndex) return;
+          (widget.onNavTap ?? navigateToTab)(
+            context,
+            i,
+          ); // ✅ เติม widget. ด้านหน้า
+        },
+      ),
     );
   }
 
@@ -612,19 +658,25 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("แก้ไขข้อมูลส่วนตัว",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Text(
+              "แก้ไขข้อมูลส่วนตัว",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
             const SizedBox(height: 14),
-            const Text("ชื่อ-นามสกุล",
-                style: TextStyle(fontSize: 12, color: GuardTheme.textGrey)),
+            const Text(
+              "ชื่อ-นามสกุล",
+              style: TextStyle(fontSize: 12, color: GuardTheme.textGrey),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: GuardTheme.scaffoldBg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -632,8 +684,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            const Text("เบอร์โทรศัพท์",
-                style: TextStyle(fontSize: 12, color: GuardTheme.textGrey)),
+            const Text(
+              "เบอร์โทรศัพท์",
+              style: TextStyle(fontSize: 12, color: GuardTheme.textGrey),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _phoneController,
@@ -641,8 +695,10 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: GuardTheme.scaffoldBg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -711,7 +767,8 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
     );
   }
 
-  Widget _divider() => Container(width: 1, height: 34, color: Colors.grey.shade200);
+  Widget _divider() =>
+      Container(width: 1, height: 34, color: Colors.grey.shade200);
 
   Widget _menuSection(String title, List<Widget> items) {
     return Padding(
@@ -721,9 +778,14 @@ class _ManagerProfileScreenState extends State<ManagerProfileScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8, left: 4),
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold, color: GuardTheme.textGrey)),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: GuardTheme.textGrey,
+              ),
+            ),
           ),
           Container(
             decoration: GuardTheme.cardDecoration(radius: 16),
