@@ -20,9 +20,9 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AuthCheck()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const AuthCheck()));
     });
   }
 
@@ -67,10 +67,13 @@ class _SplashScreenState extends State<SplashScreen> {
                         width: 2,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.shield_moon_rounded,
-                      color: Color(0xFFD4AF37),
-                      size: 48,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/icon02.png',
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
