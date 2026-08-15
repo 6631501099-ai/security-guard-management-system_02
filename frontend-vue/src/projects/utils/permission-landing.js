@@ -1,6 +1,7 @@
 export const LANDING_PATH_CANDIDATES = [
   '/dashboard',
   '/security-guard-management-system/registry',
+  '/mfu-security/overview',
   '/operations/business',
   '/accounts/directory',
   '/security/permissions/menu',

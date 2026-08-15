@@ -25,6 +25,62 @@ export default function buildNav (t) {
           permission: { path: '/operations/business', action: 'view' }
         },
         {
+          _name: 'CSidebarNavDropdown',
+          name: t('nav.mfuSecurity'),
+          route: '/mfu-security',
+          icon: 'cil-shield-alt',
+          items: [
+            {
+              name: t('nav.mfuSecurityOverview'),
+              to: '/mfu-security/overview',
+              icon: 'cil-grid',
+              permission: { path: '/mfu-security/overview', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecurityTracking'),
+              to: '/mfu-security/tracking',
+              icon: 'cil-location-pin',
+              permission: { path: '/mfu-security/tracking', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecuritySos'),
+              to: '/mfu-security/sos',
+              icon: 'cil-bell',
+              permission: { path: '/mfu-security/sos', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecurityGuards'),
+              to: '/mfu-security/guards',
+              icon: 'cil-people',
+              permission: { path: '/mfu-security/guards', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecuritySchedule'),
+              to: '/mfu-security/schedule',
+              icon: 'cil-calendar',
+              permission: { path: '/mfu-security/schedule', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecurityTasks'),
+              to: '/mfu-security/tasks',
+              icon: 'cil-playlist-add',
+              permission: { path: '/mfu-security/tasks', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecurityIncidents'),
+              to: '/mfu-security/incidents',
+              icon: 'cil-warning',
+              permission: { path: '/mfu-security/incidents', action: 'view' }
+            },
+            {
+              name: t('nav.mfuSecurityLogs'),
+              to: '/mfu-security/logs',
+              icon: 'cil-history',
+              permission: { path: '/mfu-security/logs', action: 'view' }
+            }
+          ]
+        },
+        {
           _name: 'CSidebarNavTitle',
           _children: [t('nav.accessControl')]
         },
