@@ -33,7 +33,17 @@
 </template>
 
 <script>
-import { subscribeCollection, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, COLLECTIONS, SOS_ORDER_FIELD } from '@/service/firebase'
+
+// The Flutter admin app's "Recent Logs" feed reads straight from the `sos` collection
+// (admin_logs_screen.dart) — there's no separate `logs` collection to point at.
+// `sos` docs use `name` and `timestamp`, so alias them to what this template expects.
+function mapLog (row) {
+  return Object.assign({}, row, {
+    guardName: row.name || 'ไม่ทราบชื่อ',
+    createdAt: row.timestamp
+  })
+}
 
 export default {
   name: 'MfuSecurityLogs',
@@ -47,7 +57,7 @@ export default {
   },
   computed: {
     filteredLogs () {
-      let rows = this.logs
+      let rows = this.logs.map(mapLog)
       if (this.filter !== 'all') rows = rows.filter(l => l.status === this.filter)
       if (this.search) {
         const q = this.search.toLowerCase()
@@ -57,7 +67,7 @@ export default {
     }
   },
   mounted () {
-    this.unsubscribe = subscribeCollection(COLLECTIONS.LOGS, rows => { this.logs = rows }, { orderByField: 'createdAt' })
+    this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => { this.logs = rows }, { orderByField: SOS_ORDER_FIELD })
   },
   beforeDestroy () {
     if (this.unsubscribe) this.unsubscribe()

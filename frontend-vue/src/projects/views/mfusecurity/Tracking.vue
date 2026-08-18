@@ -38,10 +38,18 @@
 </template>
 
 <script>
-import { subscribeCollection, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, isGuardOnline, COLLECTIONS } from '@/service/firebase'
 
 // Bounding box the demo campus map is drawn against — adjust to match real coordinates.
 const BOUNDS = { minLat: 20.036, maxLat: 20.050, minLng: 99.888, maxLng: 99.902 }
+
+// `locations` docs use `outOfScope: boolean` (not a `status` string) — alias it here so
+// the template can keep using guard.status like before.
+function mapGuard (row) {
+  return Object.assign({}, row, {
+    status: row.outOfScope === true ? 'out_of_scope' : 'on_route'
+  })
+}
 
 export default {
   name: 'MfuSecurityTracking',
@@ -53,10 +61,16 @@ export default {
     }
   },
   computed: {
+    // Same 60-second freshness rule as the Flutter admin app's Live Tracking screen —
+    // a guard whose phone stopped reporting drops off the map instead of leaving a
+    // stale pin sitting at their last known spot forever.
+    onlineGuards () {
+      return this.guards.filter(isGuardOnline).map(mapGuard)
+    },
     filteredGuards () {
-      if (!this.search) return this.guards
+      if (!this.search) return this.onlineGuards
       const q = this.search.toLowerCase()
-      return this.guards.filter(g => (g.name || '').toLowerCase().includes(q))
+      return this.onlineGuards.filter(g => (g.name || '').toLowerCase().includes(q))
     }
   },
   mounted () {

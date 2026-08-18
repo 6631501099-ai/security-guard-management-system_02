@@ -77,7 +77,17 @@
 </template>
 
 <script>
-import { subscribeCollection, updateDocument, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, updateDocument, notifyGuard, COLLECTIONS, SOS_ORDER_FIELD } from '@/service/firebase'
+
+// `sos` docs are written by the Flutter guard app with `name`/`email` (not
+// `guardName`/`guardEmail`) — alias them here so the template (and the rest of this
+// component) can keep using the friendlier names without touching every line below.
+function mapAlert (row) {
+  return Object.assign({}, row, {
+    guardName: row.name || 'ไม่ทราบชื่อ',
+    guardEmail: row.email || ''
+  })
+}
 
 export default {
   name: 'MfuSecuritySos',
@@ -97,7 +107,9 @@ export default {
     }
   },
   mounted () {
-    this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => { this.alerts = rows }, { orderByField: 'createdAt' })
+    this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => {
+      this.alerts = rows.map(mapAlert)
+    }, { orderByField: SOS_ORDER_FIELD })
   },
   beforeDestroy () {
     if (this.unsubscribe) this.unsubscribe()
@@ -110,6 +122,16 @@ export default {
       this.errorMessage = ''
       try {
         await updateDocument(COLLECTIONS.SOS, alert.id, { status: 'accepted' })
+        // `alert.uid` is the guard's Firebase Auth uid — sent by the guard app's
+        // sendSOS() alongside name/email/lat/lng. Notifying them here mirrors
+        // GuardActions.acceptSos on the Flutter admin side, so accepting from
+        // EITHER admin surface correctly shows up on the guard's own Alerts screen.
+        await notifyGuard(alert.uid, {
+          title: 'SOS ได้รับการตอบรับแล้ว',
+          subtitle: 'แอดมินรับทราบการแจ้งเหตุฉุกเฉินของคุณแล้ว กำลังส่งความช่วยเหลือ',
+          category: 'emergency',
+          relatedId: alert.id
+        })
         if (this.selected && this.selected.id === alert.id) {
           this.selected = Object.assign({}, this.selected, { status: 'accepted' })
         }

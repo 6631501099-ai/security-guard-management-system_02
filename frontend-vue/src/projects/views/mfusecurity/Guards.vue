@@ -2,16 +2,18 @@
   <div class="mfu-security">
     <div class="row-top">
       <div class="section-title" style="flex:1;">รายชื่อการ์ด</div>
-      <button class="btn-filled btn-primarydark" @click="openCreate">
-        <CIcon name="cil-plus" />เพิ่มการ์ด
-      </button>
     </div>
+
+    <p class="body-text" style="margin:-4px 0 14px;color:var(--text-secondary);">
+      รายชื่อนี้แสดงเฉพาะการ์ดที่เข้าสู่ระบบและเช็คอินภายใน 1 นาทีที่ผ่านมา (ตรงกับแอปแอดมิน)
+      บัญชีการ์ดใหม่ต้องลงทะเบียนผ่านแอปมือถือเท่านั้น — ไม่สามารถสร้างบัญชีจากหน้านี้ได้
+    </p>
 
     <div v-if="errorMessage" class="alert alert-danger mfu-error">{{ errorMessage }}</div>
 
     <div class="search-field" style="margin-bottom:12px;">
       <CIcon name="cil-search" />
-      <input v-model.trim="search" placeholder="ค้นหาอีเมลเจ้าหน้าที่การ์ด" />
+      <input v-model.trim="search" placeholder="ค้นหาชื่อ/อีเมลเจ้าหน้าที่การ์ด" />
     </div>
     <div class="chips">
       <div class="fchip" :class="{ on: filter === 'all' }" @click="filter = 'all'">ทั้งหมด</div>
@@ -20,7 +22,7 @@
     </div>
 
     <div class="list">
-      <div v-if="!filteredGuards.length" class="mfu-empty">ไม่พบข้อมูลเจ้าหน้าที่การ์ด</div>
+      <div v-if="!filteredGuards.length" class="mfu-empty">ไม่พบเจ้าหน้าที่การ์ดที่กำลังออนไลน์</div>
       <div class="item-card" v-for="guard in filteredGuards" :key="guard.id">
         <div class="item-row">
           <div class="avatar-circle" :style="{ background: guard.status === 'out_of_scope' ? 'var(--accent-red)' : 'var(--success)' }">
@@ -56,6 +58,7 @@
             <h3>{{ selected.name }}</h3>
           </div>
           <div class="drow"><div class="k">อีเมล</div><div class="v">{{ selected.email }}</div></div>
+          <div class="drow"><div class="k">เบอร์โทร</div><div class="v">{{ selected.phone || '-' }}</div></div>
           <div class="drow"><div class="k">ละติจูด</div><div class="v">{{ selected.lat }}</div></div>
           <div class="drow"><div class="k">ลองจิจูด</div><div class="v">{{ selected.lng }}</div></div>
           <div style="margin-top:12px;">
@@ -83,20 +86,22 @@
         </template>
 
         <template v-else>
-          <h3 style="font-size:20px;font-weight:700;margin:0 0 14px;">{{ form.id ? 'แก้ไขข้อมูลการ์ด' : 'เพิ่มการ์ดใหม่' }}</h3>
+          <h3 style="font-size:20px;font-weight:700;margin:0 0 14px;">แก้ไขข้อมูลการ์ด</h3>
+          <!--
+            Only name + phone are editable here — that matches what the real system
+            actually supports (GuardActions.updateGuardProfile on the Flutter side writes
+            these two fields to both `users/{uid}` and `locations/{uid}`). Latitude,
+            longitude, and online/out-of-scope status are live telemetry the guard's own
+            phone reports automatically; they were editable here before, but hand-editing
+            them would just get silently overwritten by the guard's phone on its next
+            location update (or several seconds), so there's no real reason to expose
+            them as form fields.
+          -->
           <label class="field-label">ชื่อ - นามสกุล</label>
           <input class="select-field" v-model.trim="form.name" placeholder="ชื่อเจ้าหน้าที่การ์ด" />
-          <label class="field-label">อีเมล</label>
-          <input class="select-field" v-model.trim="form.email" type="email" placeholder="name@mfu.ac.th" />
-          <label class="field-label">ละติจูด</label>
-          <input class="select-field" v-model.trim="form.lat" placeholder="20.0445" />
-          <label class="field-label">ลองจิจูด</label>
-          <input class="select-field" v-model.trim="form.lng" placeholder="99.8942" />
-          <label class="field-label">สถานะ</label>
-          <select class="select-field" v-model="form.status">
-            <option value="on_route">on route</option>
-            <option value="out_of_scope">out of scope</option>
-          </select>
+          <label class="field-label">เบอร์โทร</label>
+          <input class="select-field" v-model.trim="form.phone" placeholder="08X-XXX-XXXX" />
+          <p class="body-text" style="margin-top:-6px;color:var(--text-secondary);">อีเมล: {{ selected.email }} (แก้ไขไม่ได้ — ผูกกับบัญชีเข้าสู่ระบบของการ์ด)</p>
           <div style="display:flex;gap:10px;">
             <button class="btn-filled" style="flex:1;justify-content:center;background:var(--divider);color:var(--text-primary);" @click="cancelEdit">ยกเลิก</button>
             <button class="btn-filled btn-primarydark" style="flex:1;justify-content:center;" :disabled="saving" @click="saveGuard">บันทึก</button>
@@ -108,16 +113,28 @@
 </template>
 
 <script>
-import { subscribeCollection, addDocument, updateDocument, deleteDocument, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, updateDocument, deleteDocument, isGuardOnline, COLLECTIONS } from '@/service/firebase'
 
-const EMPTY_FORM = { id: '', name: '', email: '', lat: '', lng: '', status: 'on_route' }
+// `locations` docs use `outOfScope: boolean` (not a `status` string); `phone` actually
+// lives on the separate `users/{uid}` profile doc, not on `locations` at all — merge
+// both here so the template can keep treating a "guard" as one flat object.
+function mapGuard (row, usersById) {
+  const profile = usersById[row.id] || {}
+  return Object.assign({}, row, {
+    status: row.outOfScope === true ? 'out_of_scope' : 'on_route',
+    phone: profile.phone || ''
+  })
+}
+
+const EMPTY_FORM = { id: '', name: '', phone: '' }
 
 export default {
   name: 'MfuSecurityGuards',
   data () {
     return {
       guards: [],
-      unsubscribe: null,
+      users: [],
+      unsubscribers: [],
       search: '',
       filter: 'all',
       selected: null,
@@ -128,8 +145,19 @@ export default {
     }
   },
   computed: {
+    usersById () {
+      const map = {}
+      this.users.forEach(u => { map[u.id] = u })
+      return map
+    },
+    // Same 60-second freshness rule as the Flutter admin app's roster — a guard whose
+    // phone hasn't reported in over a minute is treated as off-shift and drops off this
+    // list, even if `working` is still true in Firestore.
+    onlineGuards () {
+      return this.guards.filter(isGuardOnline).map(g => mapGuard(g, this.usersById))
+    },
     filteredGuards () {
-      let rows = this.guards
+      let rows = this.onlineGuards
       if (this.filter === 'in') rows = rows.filter(g => g.status !== 'out_of_scope')
       if (this.filter === 'out') rows = rows.filter(g => g.status === 'out_of_scope')
       if (this.search) {
@@ -140,53 +168,41 @@ export default {
     }
   },
   mounted () {
-    this.unsubscribe = subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows })
+    this.unsubscribers.push(
+      subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }),
+      subscribeCollection(COLLECTIONS.USERS, rows => { this.users = rows })
+    )
   },
   beforeDestroy () {
-    if (this.unsubscribe) this.unsubscribe()
+    this.unsubscribers.forEach(unsub => unsub && unsub())
   },
   methods: {
     openDetail (guard) {
       this.selected = guard
       this.editing = false
     },
-    openCreate () {
-      this.form = Object.assign({}, EMPTY_FORM)
-      this.selected = {}
-      this.editing = true
-    },
     startEdit () {
-      this.form = Object.assign({}, EMPTY_FORM, this.selected)
+      this.form = { id: this.selected.id, name: this.selected.name || '', phone: this.selected.phone || '' }
       this.editing = true
     },
     cancelEdit () {
-      if (this.form.id) {
-        this.editing = false
-      } else {
-        this.closeSheet()
-      }
+      this.editing = false
     },
     closeSheet () {
       this.selected = null
       this.editing = false
     },
     async saveGuard () {
+      if (!this.form.id) return
       this.saving = true
       this.errorMessage = ''
       try {
-        const payload = {
-          name: this.form.name,
-          email: this.form.email,
-          lat: Number(this.form.lat) || 0,
-          lng: Number(this.form.lng) || 0,
-          status: this.form.status
-        }
-        if (this.form.id) {
-          await updateDocument(COLLECTIONS.GUARDS, this.form.id, payload)
-        } else {
-          await addDocument(COLLECTIONS.GUARDS, payload)
-        }
-        this.closeSheet()
+        // Mirrors GuardActions.updateGuardProfile on the Flutter side: name/phone go to
+        // BOTH `users/{uid}` (the guard app's own profile) and `locations/{uid}` (so the
+        // roster label here and on Live Tracking update immediately).
+        await updateDocument(COLLECTIONS.USERS, this.form.id, { name: this.form.name, phone: this.form.phone })
+        await updateDocument(COLLECTIONS.GUARDS, this.form.id, { name: this.form.name })
+        this.editing = false
       } catch (error) {
         this.errorMessage = 'ไม่สามารถบันทึกข้อมูลการ์ดได้ กรุณาลองใหม่'
       } finally {
@@ -195,10 +211,18 @@ export default {
     },
     async removeGuard () {
       if (!this.selected || !this.selected.id) return
+      // eslint-disable-next-line no-alert
+      if (!window.confirm(`นำ "${this.selected.name}" ออกจากรายชื่อและการติดตามสด ใช่หรือไม่?`)) return
       this.saving = true
       this.errorMessage = ''
       try {
+        // Matches GuardActions.deleteGuard — this only removes the guard from the
+        // active roster/live tracking + profile doc. It does NOT delete their Firebase
+        // Auth login (that needs the Admin SDK / Firebase Console — same limitation the
+        // Flutter admin app has). Their login will still work; to fully deactivate them,
+        // disable the account from the Firebase Console's Authentication tab too.
         await deleteDocument(COLLECTIONS.GUARDS, this.selected.id)
+        await deleteDocument(COLLECTIONS.USERS, this.selected.id)
         this.closeSheet()
       } catch (error) {
         this.errorMessage = 'ไม่สามารถลบข้อมูลการ์ดได้ กรุณาลองใหม่'

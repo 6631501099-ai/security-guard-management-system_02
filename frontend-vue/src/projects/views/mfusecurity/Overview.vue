@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { subscribeCollection, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, isGuardOnline, COLLECTIONS, SOS_ORDER_FIELD } from '@/service/firebase'
 
 export default {
   name: 'MfuSecurityOverview',
@@ -63,11 +63,17 @@ export default {
     }
   },
   computed: {
+    // `locations` docs use `outOfScope: boolean` (not a `status` string) and admin only
+    // counts a guard as "online" if they've checked in within the last 60 seconds — same
+    // rule the Flutter admin dashboard uses, so the two admin surfaces always agree.
+    onlineGuards () {
+      return this.guards.filter(isGuardOnline)
+    },
     onlineCount () {
-      return this.guards.filter(g => g.status !== 'out_of_scope').length
+      return this.onlineGuards.filter(g => g.outOfScope !== true).length
     },
     outOfScopeCount () {
-      return this.guards.filter(g => g.status === 'out_of_scope').length
+      return this.onlineGuards.filter(g => g.outOfScope === true).length
     },
     pendingSosCount () {
       return this.sosAlerts.filter(s => s.status === 'pending').length
@@ -76,7 +82,9 @@ export default {
   mounted () {
     this.unsubscribers.push(
       subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }),
-      subscribeCollection(COLLECTIONS.SOS, rows => { this.sosAlerts = rows }, { orderByField: 'createdAt' })
+      // `sos` documents timestamp themselves with a field called `timestamp`, not
+      // `createdAt` — see the comment on SOS_ORDER_FIELD in service/firebase.js.
+      subscribeCollection(COLLECTIONS.SOS, rows => { this.sosAlerts = rows }, { orderByField: SOS_ORDER_FIELD })
     )
   },
   beforeDestroy () {

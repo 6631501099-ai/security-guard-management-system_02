@@ -56,6 +56,15 @@
 <script>
 import { subscribeCollection, updateDocument, COLLECTIONS } from '@/service/firebase'
 
+// `incidents` docs written by the Flutter guard app use `type`/`guardName` (not
+// `title`/`reporter`) — alias them here so the template can keep its existing names.
+function mapIncident (row) {
+  return Object.assign({}, row, {
+    title: row.type || 'เหตุการณ์',
+    reporter: row.guardName || 'ไม่ทราบชื่อ'
+  })
+}
+
 export default {
   name: 'MfuSecurityIncidents',
   data () {
@@ -69,8 +78,9 @@ export default {
   },
   computed: {
     filteredIncidents () {
-      if (this.filter === 'all') return this.incidents
-      return this.incidents.filter(i => (i.status || 'new') === this.filter)
+      const rows = this.incidents.map(mapIncident)
+      if (this.filter === 'all') return rows
+      return rows.filter(i => (i.status || 'new') === this.filter)
     }
   },
   mounted () {

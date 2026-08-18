@@ -43,8 +43,8 @@
         <div class="sheet-handle"></div>
         <h3 style="font-size:20px;font-weight:700;margin:0 0 14px;">มอบหมายงานใหม่</h3>
         <label class="field-label">เลือกเจ้าหน้าที่</label>
-        <select class="select-field" v-model="form.assignee">
-          <option v-for="name in guardNames" :key="name" :value="name">{{ name }}</option>
+        <select class="select-field" v-model="form.guardUid">
+          <option v-for="g in guardOptions" :key="g.uid" :value="g.uid">{{ g.name }}</option>
         </select>
         <label class="field-label">ชื่องาน</label>
         <input class="select-field" v-model.trim="form.title" placeholder="ตรวจสอบไฟส่องสว่างบริเวณลานจอดรถ C" />
@@ -82,10 +82,27 @@
 </template>
 
 <script>
-import { subscribeCollection, addDocument, updateDocument, deleteDocument, COLLECTIONS } from '@/service/firebase'
+import { subscribeCollection, addDocument, updateDocument, deleteDocument, notifyGuard, COLLECTIONS } from '@/service/firebase'
 
-const DAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
-const EMPTY_FORM = { assignee: '', title: '', time: '', date: '', repeatWeekly: false, repeatDays: [] }
+const DAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'] // index matches JS Date#getDay()
+const REPEAT_WEEKS = 8 // how many weeks ahead to generate recurring task instances
+const EMPTY_FORM = { guardUid: '', title: '', time: '', date: '', repeatWeekly: false, repeatDays: [] }
+
+function toDateKey (date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+// `tasks` docs on the Flutter side use `guardName`/`timeRange` (not `assignee`/`time`) —
+// alias them here so the template can keep its existing field names.
+function mapTask (row) {
+  return Object.assign({}, row, {
+    assignee: row.guardName || '',
+    time: row.timeRange || ''
+  })
+}
 
 export default {
   name: 'MfuSecurityTasks',
@@ -103,13 +120,16 @@ export default {
     }
   },
   computed: {
-    guardNames () {
-      return this.guards.map(g => g.name).filter(Boolean)
+    guardOptions () {
+      return this.guards.map(g => ({ uid: g.id, name: g.name })).filter(g => g.name)
+    },
+    mappedTasks () {
+      return this.tasks.map(mapTask)
     },
     filteredTasks () {
-      if (this.filter === 'pending') return this.tasks.filter(t => !t.done)
-      if (this.filter === 'done') return this.tasks.filter(t => t.done)
-      return this.tasks
+      if (this.filter === 'pending') return this.mappedTasks.filter(t => !t.done)
+      if (this.filter === 'done') return this.mappedTasks.filter(t => t.done)
+      return this.mappedTasks
     }
   },
   mounted () {
@@ -124,7 +144,7 @@ export default {
   methods: {
     openCreate () {
       const today = new Date().toISOString().slice(0, 10)
-      this.form = Object.assign({}, EMPTY_FORM, { assignee: this.guardNames[0] || '', date: today })
+      this.form = Object.assign({}, EMPTY_FORM, { guardUid: this.guardOptions[0] ? this.guardOptions[0].uid : '', date: today })
       this.creating = true
     },
     toggleDay (day) {
@@ -132,19 +152,51 @@ export default {
       if (idx >= 0) this.form.repeatDays.splice(idx, 1)
       else this.form.repeatDays.push(day)
     },
+    // The Flutter guard app's task screen (guard_tasks_screen.dart) just reads flat
+    // `tasks` docs per guardUid — there's no "recurring task" field/concept on that
+    // side. To keep "ทำซ้ำทุกสัปดาห์" working without any Flutter changes, this
+    // generates one plain task doc per matching weekday over the next REPEAT_WEEKS
+    // weeks instead of storing a repeat rule that nothing else understands.
+    generateDates () {
+      if (!this.form.repeatWeekly || !this.form.repeatDays.length) {
+        return [this.form.date]
+      }
+      const dates = []
+      const start = new Date(this.form.date + 'T00:00:00')
+      const totalDays = REPEAT_WEEKS * 7
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(start)
+        d.setDate(d.getDate() + i)
+        if (this.form.repeatDays.includes(DAY_LABELS[d.getDay()])) {
+          dates.push(toDateKey(d))
+        }
+      }
+      return dates.length ? dates : [this.form.date]
+    },
     async saveTask () {
+      if (!this.form.guardUid) {
+        this.errorMessage = 'กรุณาเลือกเจ้าหน้าที่'
+        return
+      }
       this.saving = true
       this.errorMessage = ''
       try {
-        const payload = {
-          assignee: this.form.assignee,
+        const picked = this.guardOptions.find(g => g.uid === this.form.guardUid)
+        const guardName = picked ? picked.name : ''
+        const dates = this.generateDates()
+        await Promise.all(dates.map(date => addDocument(COLLECTIONS.TASKS, {
+          guardUid: this.form.guardUid,
+          guardName,
           title: this.form.title,
-          time: this.form.time,
-          date: this.form.date,
-          repeatDays: this.form.repeatWeekly ? this.form.repeatDays : [],
+          timeRange: this.form.time,
+          date,
           done: false
-        }
-        await addDocument(COLLECTIONS.TASKS, payload)
+        })))
+        await notifyGuard(this.form.guardUid, {
+          title: 'มีงานใหม่ได้รับมอบหมาย',
+          subtitle: this.form.title,
+          category: 'notice'
+        })
         this.creating = false
       } catch (error) {
         this.errorMessage = 'ไม่สามารถมอบหมายงานได้ กรุณาลองใหม่'
