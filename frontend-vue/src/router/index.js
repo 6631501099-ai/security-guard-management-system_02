@@ -57,7 +57,7 @@ const router = new Router({
           component: Dashboard
         },
         {
-          path: 'securityguardmanagementsystem/registry',
+          path: 'security-guard-management-system/registry',
           name: 'Security Guard Management System Registry',
           meta: { permission: { path: '/security-guard-management-system/registry', action: 'view' } },
           component: SecurityGuardManagementSystemRegistry
