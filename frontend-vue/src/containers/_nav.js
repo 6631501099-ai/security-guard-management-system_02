@@ -29,6 +29,19 @@ export default function buildNav (t) {
           name: t('nav.mfuSecurity'),
           route: '/mfu-security',
           icon: 'cil-shield-alt',
+          permission: {
+            paths: [
+              '/mfu-security/overview',
+              '/mfu-security/tracking',
+              '/mfu-security/sos',
+              '/mfu-security/guards',
+              '/mfu-security/schedule',
+              '/mfu-security/tasks',
+              '/mfu-security/incidents',
+              '/mfu-security/logs'
+            ],
+            action: 'view'
+          },
           items: [
             {
               name: t('nav.mfuSecurityOverview'),

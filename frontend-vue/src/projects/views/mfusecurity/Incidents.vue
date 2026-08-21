@@ -1,6 +1,12 @@
 <template>
   <div class="mfu-security">
     <div class="section-title">รายงานเหตุการณ์</div>
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังโหลดรายงานเหตุการณ์จาก Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <template v-else>
     <div v-if="errorMessage" class="alert alert-danger mfu-error">{{ errorMessage }}</div>
 
     <div class="chips">
@@ -30,6 +36,7 @@
         </div>
       </div>
     </div>
+    </template>
 
     <div class="overlay" :class="{ show: !!selected }" @click.self="selected = null">
       <div class="sheet" v-if="selected">
@@ -73,6 +80,8 @@ export default {
       unsubscribe: null,
       filter: 'new',
       selected: null,
+      loading: true,
+      firebaseError: '',
       errorMessage: ''
     }
   },
@@ -84,10 +93,26 @@ export default {
     }
   },
   mounted () {
-    this.unsubscribe = subscribeCollection(COLLECTIONS.INCIDENTS, rows => { this.incidents = rows }, { orderByField: 'createdAt' })
+    this.unsubscribe = subscribeCollection(COLLECTIONS.INCIDENTS, rows => {
+      this.incidents = rows
+      this.loading = false
+    }, {
+      orderByField: 'createdAt',
+      onError: err => {
+        this.loading = false
+        this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+      }
+    })
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     if (this.unsubscribe) this.unsubscribe()
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   },
   methods: {
     async markReviewed () {

@@ -2,6 +2,12 @@
   <div class="mfu-security">
     <div class="section-title">แจ้งเตือนฉุกเฉิน SOS</div>
 
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังโหลดข้อมูล SOS จาก Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <template v-else>
     <div v-if="errorMessage" class="alert alert-danger mfu-error">{{ errorMessage }}</div>
 
     <div class="chips">
@@ -42,6 +48,7 @@
         </div>
       </div>
     </div>
+    </template>
 
     <div class="overlay" :class="{ show: !!selected }" @click.self="selected = null">
       <div class="sheet" v-if="selected">
@@ -97,6 +104,8 @@ export default {
       unsubscribe: null,
       filter: 'pending',
       selected: null,
+      loading: true,
+      firebaseError: '',
       errorMessage: ''
     }
   },
@@ -109,10 +118,24 @@ export default {
   mounted () {
     this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => {
       this.alerts = rows.map(mapAlert)
-    }, { orderByField: SOS_ORDER_FIELD })
+      this.loading = false
+    }, {
+      orderByField: SOS_ORDER_FIELD,
+      onError: err => {
+        this.loading = false
+        this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+      }
+    })
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     if (this.unsubscribe) this.unsubscribe()
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   },
   methods: {
     openDetail (alert) {

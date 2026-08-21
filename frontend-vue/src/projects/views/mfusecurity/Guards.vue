@@ -5,10 +5,16 @@
     </div>
 
     <p class="body-text" style="margin:-4px 0 14px;color:var(--text-secondary);">
-      รายชื่อนี้แสดงเฉพาะการ์ดที่เข้าสู่ระบบและเช็คอินภายใน 1 นาทีที่ผ่านมา (ตรงกับแอปแอดมิน)
-      บัญชีการ์ดใหม่ต้องลงทะเบียนผ่านแอปมือถือเท่านั้น — ไม่สามารถสร้างบัญชีจากหน้านี้ได้
+      รายชื่อนี้แสดงเฉพาะการ์ดที่เช็คอินภายใน 1 นาทีที่ผ่านมา
+      (Firestore ทั้งหมด: {{ guards.length }} records, ออนไลน์: {{ onlineGuards.length }} คน)
     </p>
 
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังโหลดข้อมูลจาก Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <template v-else>
     <div v-if="errorMessage" class="alert alert-danger mfu-error">{{ errorMessage }}</div>
 
     <div class="search-field" style="margin-bottom:12px;">
@@ -45,6 +51,7 @@
         </div>
       </div>
     </div>
+    </template>
 
     <div class="overlay" :class="{ show: !!selected }" @click.self="closeSheet">
       <div class="sheet" v-if="selected">
@@ -140,6 +147,8 @@ export default {
       selected: null,
       editing: false,
       saving: false,
+      loading: true,
+      firebaseError: '',
       errorMessage: '',
       form: Object.assign({}, EMPTY_FORM)
     }
@@ -168,13 +177,27 @@ export default {
     }
   },
   mounted () {
+    const handleErr = err => {
+      this.loading = false
+      this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+    }
     this.unsubscribers.push(
-      subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }),
-      subscribeCollection(COLLECTIONS.USERS, rows => { this.users = rows })
+      subscribeCollection(COLLECTIONS.GUARDS, rows => {
+        this.guards = rows
+        this.loading = false
+      }, { onError: handleErr }),
+      subscribeCollection(COLLECTIONS.USERS, rows => { this.users = rows }, { onError: handleErr })
     )
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     this.unsubscribers.forEach(unsub => unsub && unsub())
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   },
   methods: {
     openDetail (guard) {

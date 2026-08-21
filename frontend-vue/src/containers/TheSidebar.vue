@@ -121,9 +121,13 @@ export default {
       }
       const matrix = this.$store.getters['security/matrix'] || {}
       const action = item.permission && item.permission.action ? item.permission.action : 'view'
+
+      // ถ้า path ใดๆ ไม่ได้ลงทะเบียนใน Permission Matrix เลย → ถือว่าไม่มีการจำกัดสิทธิ์ → แสดงเมนู
+      // จะซ่อนเฉพาะเมื่อ path อยู่ใน matrix แต่ user ไม่มีสิทธิ์เท่านั้น
       return explicitPaths.some(path => {
         const rule = matrix[path] || matrix[this.swapPermissionPlurality(path)]
-        return !!(rule && (rule.all || rule[action] || rule.view))
+        if (!rule) return true  // path ไม่ได้ register → แสดงเสมอ
+        return !!(rule.all || rule[action] || rule.view)
       })
     },
     filterNavTree(items) {

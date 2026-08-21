@@ -1,6 +1,12 @@
 <template>
   <div class="mfu-security">
     <div class="section-title">จัดการตารางงาน</div>
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังโหลดตารางงานจาก Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <template v-else>
     <div v-if="errorMessage" class="alert alert-danger mfu-error">{{ errorMessage }}</div>
 
     <label class="field-label">เลือกเจ้าหน้าที่</label>
@@ -37,6 +43,7 @@
         </div>
       </div>
     </div>
+    </template>
 
     <div class="overlay" :class="{ show: creating }" @click.self="creating = false">
       <div class="sheet" v-if="creating">
@@ -95,6 +102,8 @@ export default {
       selectedGuardUid: '',
       creating: false,
       saving: false,
+      loading: true,
+      firebaseError: '',
       errorMessage: '',
       form: Object.assign({}, EMPTY_FORM)
     }
@@ -124,13 +133,27 @@ export default {
     }
   },
   mounted () {
+    const handleErr = err => {
+      this.loading = false
+      this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+    }
     this.unsubscribers.push(
-      subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }),
-      subscribeCollection(COLLECTIONS.SCHEDULES, rows => { this.shifts = rows })
+      subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }, { onError: handleErr }),
+      subscribeCollection(COLLECTIONS.SCHEDULES, rows => {
+        this.shifts = rows
+        this.loading = false
+      }, { onError: handleErr })
     )
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     this.unsubscribers.forEach(unsub => unsub && unsub())
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   },
   methods: {
     shiftDay (delta) {

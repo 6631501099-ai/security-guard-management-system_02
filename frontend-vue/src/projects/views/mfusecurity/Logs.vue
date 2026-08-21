@@ -3,6 +3,12 @@
     <div class="section-title">บันทึกล่าสุด</div>
     <p class="body-text" style="margin-bottom:14px;">เหตุการณ์ตรวจตรา กิจกรรม SOS และสถานะการ์ดล่าสุดทั้งหมด (เรียลไทม์)</p>
 
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังโหลดบันทึกจาก Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <template v-else>
     <div class="search-field" style="margin-bottom:12px;">
       <CIcon name="cil-search" />
       <input v-model.trim="search" placeholder="ค้นหาชื่อเจ้าหน้าที่" />
@@ -29,6 +35,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -52,7 +59,9 @@ export default {
       logs: [],
       unsubscribe: null,
       search: '',
-      filter: 'all'
+      filter: 'all',
+      loading: true,
+      firebaseError: ''
     }
   },
   computed: {
@@ -67,10 +76,26 @@ export default {
     }
   },
   mounted () {
-    this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => { this.logs = rows }, { orderByField: SOS_ORDER_FIELD })
+    this.unsubscribe = subscribeCollection(COLLECTIONS.SOS, rows => {
+      this.logs = rows
+      this.loading = false
+    }, {
+      orderByField: SOS_ORDER_FIELD,
+      onError: err => {
+        this.loading = false
+        this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+      }
+    })
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     if (this.unsubscribe) this.unsubscribe()
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   },
   methods: {
     formatTime (value) {

@@ -115,7 +115,8 @@ const ServerModule = {
       if (!path) return true;
       const normalizedPath = normalizePermissionPath(path);
       const rule = state.matrix[normalizedPath] || state.matrix[swapPermissionPlurality(normalizedPath)];
-      if (!rule) return false;
+      // ถ้า path ยังไม่ได้ลงทะเบียนใน Permission Matrix → ถือว่าไม่มีการจำกัดสิทธิ์ → อนุญาต
+      if (!rule) return true;
       return !!(rule.all || rule[action]);
     },
     landingPath: (state, getters) => {

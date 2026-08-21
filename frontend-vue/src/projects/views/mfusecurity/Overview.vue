@@ -19,7 +19,12 @@
       </button>
     </div>
 
-    <div class="stat-wrap">
+    <div v-if="loading" style="text-align:center;padding:40px;color:var(--text-secondary);">
+      <div class="mfu-spinner"></div>
+      <p style="margin-top:12px;">กำลังเชื่อมต่อกับ Firebase...</p>
+    </div>
+    <div v-else-if="firebaseError" class="alert alert-danger mfu-error">{{ firebaseError }}</div>
+    <div v-else class="stat-wrap">
       <div class="stat-card">
         <div class="stat-icon" style="background:rgba(46,125,50,0.12)">
           <CIcon name="cil-people" style="color:#2E7D32" />
@@ -27,6 +32,7 @@
         <div>
           <div class="stat-label">การ์ดออนไลน์</div>
           <div class="stat-value" style="color:var(--success)">{{ onlineCount }}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">(ทั้งหมดในระบบ {{ guards.length }} คน)</div>
         </div>
       </div>
       <div class="stat-card">
@@ -45,6 +51,7 @@
         <div>
           <div class="stat-label">SOS รอดำเนินการ</div>
           <div class="stat-value" style="color:var(--warning)">{{ pendingSosCount }}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">(การแจ้งเหตุทั้งหมด {{ sosAlerts.length }} รายการ)</div>
         </div>
       </div>
     </div>
@@ -82,7 +89,9 @@ export default {
     return {
       guards: [],
       sosAlerts: [],
-      unsubscribers: []
+      unsubscribers: [],
+      loading: true,
+      firebaseError: ''
     }
   },
   computed: {
@@ -103,15 +112,30 @@ export default {
     }
   },
   mounted () {
+    const handleErr = err => {
+      this.loading = false
+      this.firebaseError = (err && err.message) ? err.message : 'ไม่สามารถเชื่อมต่อ Firebase ได้'
+    }
     this.unsubscribers.push(
-      subscribeCollection(COLLECTIONS.GUARDS, rows => { this.guards = rows }),
-      // `sos` documents timestamp themselves with a field called `timestamp`, not
-      // `createdAt` — see the comment on SOS_ORDER_FIELD in service/firebase.js.
-      subscribeCollection(COLLECTIONS.SOS, rows => { this.sosAlerts = rows }, { orderByField: SOS_ORDER_FIELD })
+      subscribeCollection(COLLECTIONS.GUARDS, rows => {
+        this.guards = rows
+        this.loading = false
+      }, { onError: handleErr }),
+      subscribeCollection(COLLECTIONS.SOS, rows => {
+        this.sosAlerts = rows
+        this.loading = false
+      }, { orderByField: SOS_ORDER_FIELD, onError: handleErr })
     )
+    this._fbTimeout = setTimeout(() => {
+      if (this.loading) {
+        this.loading = false
+        this.firebaseError = 'ไม่ได้รับข้อมูลจาก Firebase ภายใน 8 วินาที'
+      }
+    }, 8000)
   },
   beforeDestroy () {
     this.unsubscribers.forEach(unsub => unsub && unsub())
+    if (this._fbTimeout) clearTimeout(this._fbTimeout)
   }
 }
 </script>
