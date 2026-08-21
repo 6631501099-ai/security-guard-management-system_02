@@ -64,69 +64,6 @@ const router = new Router({
           component: SecurityGuardManagementSystemRegistry
         },
         {
-          
-          path: 'mfu-security/guards',
-          name: 'MFU Security Guards',
-          meta: { permission: { path: '/mfu-security/guards', action: 'view' } },
-          component: MfuSecurityGuards
-        },
-                {
-          path: 'mfu-security',
-          redirect: 'mfu-security/overview',
-          name: 'MFU Security',
-          component: MfuSecurityLayout,
-          children: [
-            {
-              path: 'overview',
-              name: 'MFU Security Overview',
-              meta: { permission: { path: '/mfu-security/overview', action: 'view' } },
-              component: MfuSecurityOverview
-            },
-            {
-              path: 'tracking',
-              name: 'MFU Security Tracking',
-              meta: { permission: { path: '/mfu-security/tracking', action: 'view' } },
-              component: MfuSecurityTracking
-            },
-            {
-              path: 'sos',
-              name: 'MFU Security SOS',
-              meta: { permission: { path: '/mfu-security/sos', action: 'view' } },
-              component: MfuSecuritySos
-            },
-            {
-              path: 'guards',
-              name: 'MFU Security Guards',
-              meta: { permission: { path: '/mfu-security/guards', action: 'view' } },
-              component: MfuSecurityGuards
-            },
-            {
-              path: 'schedule',
-              name: 'MFU Security Schedule',
-              meta: { permission: { path: '/mfu-security/schedule', action: 'view' } },
-              component: MfuSecuritySchedule
-            },
-            {
-              path: 'tasks',
-              name: 'MFU Security Tasks',
-              meta: { permission: { path: '/mfu-security/tasks', action: 'view' } },
-              component: MfuSecurityTasks
-            },
-            {
-              path: 'incidents',
-              name: 'MFU Security Incidents',
-              meta: { permission: { path: '/mfu-security/incidents', action: 'view' } },
-              component: MfuSecurityIncidents
-            },
-            {
-              path: 'logs',
-              name: 'MFU Security Logs',
-              meta: { permission: { path: '/mfu-security/logs', action: 'view' } },
-              component: MfuSecurityLogs
-            }
-          ]
-        },
-        {
           path: 'operations/business',
           name: 'Business Operations',
           meta: { permission: { path: '/operations/business', action: 'view' } },
@@ -220,6 +157,62 @@ const router = new Router({
           name: 'Message Status',
           meta: { permission: { path: '/setting/message-status', action: 'view' } },
           component: SettingMessageStatus
+        }
+      ]
+    },
+    {
+      path: '/mfu-security',
+      redirect: '/mfu-security/overview',
+      name: 'MFU Security',
+      component: MfuSecurityLayout,
+      children: [
+        {
+          path: 'overview',
+          name: 'MFU Security Overview',
+          meta: { permission: { path: '/mfu-security/overview', action: 'view' } },
+          component: MfuSecurityOverview
+        },
+        {
+          path: 'tracking',
+          name: 'MFU Security Tracking',
+          meta: { permission: { path: '/mfu-security/tracking', action: 'view' } },
+          component: MfuSecurityTracking
+        },
+        {
+          path: 'sos',
+          name: 'MFU Security SOS',
+          meta: { permission: { path: '/mfu-security/sos', action: 'view' } },
+          component: MfuSecuritySos
+        },
+        {
+          path: 'guards',
+          name: 'MFU Security Guards',
+          meta: { permission: { path: '/mfu-security/guards', action: 'view' } },
+          component: MfuSecurityGuards
+        },
+        {
+          path: 'schedule',
+          name: 'MFU Security Schedule',
+          meta: { permission: { path: '/mfu-security/schedule', action: 'view' } },
+          component: MfuSecuritySchedule
+        },
+        {
+          path: 'tasks',
+          name: 'MFU Security Tasks',
+          meta: { permission: { path: '/mfu-security/tasks', action: 'view' } },
+          component: MfuSecurityTasks
+        },
+        {
+          path: 'incidents',
+          name: 'MFU Security Incidents',
+          meta: { permission: { path: '/mfu-security/incidents', action: 'view' } },
+          component: MfuSecurityIncidents
+        },
+        {
+          path: 'logs',
+          name: 'MFU Security Logs',
+          meta: { permission: { path: '/mfu-security/logs', action: 'view' } },
+          component: MfuSecurityLogs
         }
       ]
     },

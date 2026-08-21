@@ -20,18 +20,18 @@ export default {
 .mfu-security-layout {
   display: flex;
   align-items: stretch;
-  min-height: 70vh;
+  min-height: 100vh;
   background: #F5F7FB;
-  border-radius: 16px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
 .mfu-security-layout__content {
   flex: 1;
   min-width: 0;
-  padding: 20px;
+  padding: 24px 28px;
   overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
 @media (max-width: 768px) {

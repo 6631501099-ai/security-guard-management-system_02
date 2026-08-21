@@ -15,6 +15,85 @@
   height: 1.2rem;
   font-size: 1.2rem;
 }
+// ---------------------------------------------------------------------------
+// Unified MFU brand theme — applies the same colour palette, rounded cards and
+// soft shadows used by the MFU Security module (see
+// projects/views/mfusecurity/mfu-security.shared.scss) to the rest of the app
+// so every module shares a consistent look. Purely visual: no markup/logic
+// from existing pages is touched or removed.
+// ---------------------------------------------------------------------------
+:root{
+  --mfu-bg: #F5F7FB;
+  --mfu-surface: #FFFFFF;
+  --mfu-primary-dark: #4A0000;
+  --mfu-primary-red: #800000;
+  --mfu-accent-red: #E53935;
+  --mfu-success: #2E7D32;
+  --mfu-warning: #D4AF37;
+  --mfu-info: #37474F;
+  --mfu-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
+}
+
+.c-app,
+.c-body,
+.c-main{
+  background: var(--mfu-bg);
+}
+
+.card{
+  border: none;
+  border-radius: 1rem;
+  box-shadow: var(--mfu-shadow);
+}
+
+.card-header{
+  border-radius: 1rem 1rem 0 0 !important;
+  background: var(--mfu-surface);
+  border-bottom: 1px solid #E9EBF0;
+}
+
+.btn-primary{
+  background-color: var(--mfu-primary-red);
+  border-color: var(--mfu-primary-red);
+}
+.btn-primary:hover,
+.btn-primary:focus{
+  background-color: var(--mfu-primary-dark);
+  border-color: var(--mfu-primary-dark);
+}
+
+.btn-danger{
+  background-color: var(--mfu-accent-red);
+  border-color: var(--mfu-accent-red);
+}
+
+.btn-success{
+  background-color: var(--mfu-success);
+  border-color: var(--mfu-success);
+}
+
+.btn-warning{
+  background-color: var(--mfu-warning);
+  border-color: var(--mfu-warning);
+}
+
+.badge-primary{
+  background-color: var(--mfu-primary-red);
+}
+
+a{
+  color: var(--mfu-primary-red);
+}
+a:hover{
+  color: var(--mfu-primary-dark);
+}
+
+.c-header{
+  background: var(--mfu-surface);
+  box-shadow: var(--mfu-shadow);
+  border: none;
+}
+
 .bg-login{
   border-radius: 1rem ;
   background: linear-gradient(180deg,#8c1515 30%,#FEC260 60%);

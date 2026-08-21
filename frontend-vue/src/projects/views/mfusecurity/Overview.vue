@@ -1,7 +1,23 @@
 <template>
   <div class="mfu-security">
-    <div class="page-title">แดชบอร์ดผู้ดูแลระบบ</div>
-    <p class="body-text">ควบคุมภาพรวมเจ้าหน้าที่การ์ด สถานะการตรวจตรา และเหตุฉุกเฉินที่เข้ามาแบบเรียลไทม์ (ข้อมูลซิงก์กับ Firebase)</p>
+    <div class="row-top" style="align-items:flex-start;">
+      <div style="flex:1;">
+        <div class="page-title">แดชบอร์ดผู้ดูแลระบบ</div>
+        <p class="body-text">ควบคุมภาพรวมเจ้าหน้าที่การ์ด สถานะการตรวจตรา และเหตุฉุกเฉินที่เข้ามาแบบเรียลไทม์ (ข้อมูลซิงก์กับ Firebase)</p>
+      </div>
+      <button
+        class="icon-btn"
+        style="background:var(--surface);box-shadow:var(--shadow-card);width:44px;height:44px;border-radius:50%;position:relative;flex-shrink:0;"
+        title="การแจ้งเตือน"
+        @click="$router.push('/mfu-security/sos')"
+      >
+        <CIcon name="cil-bell" />
+        <span
+          v-if="pendingSosCount"
+          style="position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:var(--accent-red);"
+        ></span>
+      </button>
+    </div>
 
     <div class="stat-wrap">
       <div class="stat-card">
@@ -46,6 +62,13 @@
           <CIcon name="cil-people" />รายชื่อการ์ด
         </button>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;padding:16px 18px;display:flex;gap:10px;align-items:flex-start;">
+      <CIcon name="cil-lock-locked" style="color:var(--text-secondary);flex-shrink:0;margin-top:2px;" />
+      <p class="body-text" style="margin:0;">
+        ทุกหน้าอยู่หลังระบบล็อกอิน — ต้องมี role "admin" ใน Firestore ถึงเข้าดูข้อมูลจริงได้
+      </p>
     </div>
   </div>
 </template>

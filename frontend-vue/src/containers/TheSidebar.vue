@@ -164,7 +164,52 @@ export default {
 </script>
 
 <style>
+/* Unified brand sidebar — same maroon identity used by the MFU Security module
+   (see projects/views/mfusecurity/mfu-security-sidebar.shared.scss) so every
+   section of the app shares one consistent look-and-feel. */
 .bg-style1{
-  background: linear-gradient(30deg,#FEC260 0%,#8c1515 60%);
+  background: linear-gradient(180deg, #6E0A0A 0%, #3A0000 100%);
+}
+
+.bg-style1 .c-sidebar-brand{
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+
+.bg-style1 .c-sidebar-nav-title{
+  color: rgba(255,255,255,.55);
+}
+
+.bg-style1 .c-sidebar-nav-link,
+.bg-style1 .c-sidebar-nav-dropdown-toggle{
+  color: rgba(255,255,255,.88);
+  border-radius: 12px;
+  margin: 2px 10px;
+  width: calc(100% - 20px);
+}
+
+.bg-style1 .c-sidebar-nav-link:hover,
+.bg-style1 .c-sidebar-nav-dropdown-toggle:hover{
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.bg-style1 .c-sidebar-nav-link.c-active,
+.bg-style1 .c-sidebar-nav-link.active,
+.bg-style1 .c-sidebar-nav-dropdown.c-show > .c-sidebar-nav-dropdown-toggle{
+  background: rgba(255,255,255,.16);
+  color: #fff;
+}
+
+.bg-style1 .c-sidebar-nav-dropdown-items .c-sidebar-nav-link{
+  background: rgba(0,0,0,.12);
+}
+
+.bg-style1 .c-sidebar-nav-icon{
+  color: rgba(255,255,255,.85);
+}
+
+.bg-style1 .c-sidebar-minimizer{
+  background: rgba(0,0,0,.15);
 }
 </style>
